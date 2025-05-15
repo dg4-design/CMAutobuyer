@@ -18,7 +18,7 @@ var CMUpgradeAutobuyer = {};
   UpgradeAutobuyer.excludeSettingPrefix = "cmUpgradeExclude"; // 除外設定のプレフィックス
 
   // 除外設定
-  UpgradeAutobuyer.excludeSwitches = true; // Golden/Shimmering Switch など
+  // スイッチ系は常に除外（設定項目から削除）
   UpgradeAutobuyer.excludeResearch = false; // 研究アップグレード（任意）
   UpgradeAutobuyer.excludeCovenants = true; // Elder Covenant など
 
@@ -126,28 +126,7 @@ var CMUpgradeAutobuyer = {};
     };
     optionsTable.appendChild(enabledRow);
 
-    // スイッチ系除外設定
-    const switchesRow = UpgradeAutobuyer.createPreferenceRow(
-      "スイッチ系除外",
-      "CMUpgradeAutobuyerSwitches",
-      UpgradeAutobuyer.excludeSwitches ? "ON" : "OFF",
-      "Golden Switch や Shimmering Veil などのスイッチ系アップグレードを自動購入から除外します"
-    );
-
-    switchesRow.querySelector("a.option").onclick = function () {
-      UpgradeAutobuyer.excludeSwitches = !UpgradeAutobuyer.excludeSwitches;
-      this.textContent = UpgradeAutobuyer.excludeSwitches ? "ON" : "OFF";
-      this.className = "option" + (UpgradeAutobuyer.excludeSwitches ? "" : " off");
-
-      // 設定に反映
-      if (Game.mods.cookieMonsterFramework?.saveData?.cmUpgradeAutobuyer?.settings) {
-        Game.mods.cookieMonsterFramework.saveData.cmUpgradeAutobuyer.settings.ExcludeSwitches = UpgradeAutobuyer.excludeSwitches ? 1 : 0;
-      }
-
-      Game.Notify("アップグレード自動購入", `スイッチ系除外を${UpgradeAutobuyer.excludeSwitches ? "オン" : "オフ"}にしました`, [16, 5], 3);
-      return false;
-    };
-    optionsTable.appendChild(switchesRow);
+    // スイッチ系除外設定は削除
 
     // 研究除外設定
     const researchRow = UpgradeAutobuyer.createPreferenceRow(
@@ -246,16 +225,7 @@ var CMUpgradeAutobuyer = {};
           }
         },
       },
-      ExcludeSwitches: {
-        label: ["オフ", "オン"],
-        desc: "スイッチ系アップグレードを除外（Golden Switch, Shimmering Veil など）",
-        type: "bool",
-        toggle: true,
-        func: function () {
-          UpgradeAutobuyer.excludeSwitches = Game.mods.cookieMonsterFramework?.saveData?.cmUpgradeAutobuyer?.settings?.ExcludeSwitches === 1;
-          Game.Notify("アップグレード自動購入", `スイッチ系除外を${UpgradeAutobuyer.excludeSwitches ? "オン" : "オフ"}にしました`, [16, 5], 3);
-        },
-      },
+      // ExcludeSwitches設定項目を削除
       ExcludeResearch: {
         label: ["オフ", "オン"],
         desc: "研究アップグレードを除外（グランマポカリプス関連）",
@@ -290,7 +260,7 @@ var CMUpgradeAutobuyer = {};
         headers: { UpgradeAutobuyer: 1 },
         settings: {
           AutoBuyerEnabled: UpgradeAutobuyer.isRunning ? 1 : 0,
-          ExcludeSwitches: UpgradeAutobuyer.excludeSwitches ? 1 : 0,
+          // ExcludeSwitchesの設定は削除（常にスイッチ系は除外するため）
           ExcludeResearch: UpgradeAutobuyer.excludeResearch ? 1 : 0,
           ExcludeCovenants: UpgradeAutobuyer.excludeCovenants ? 1 : 0,
         },
@@ -315,7 +285,8 @@ var CMUpgradeAutobuyer = {};
   // アップグレードを除外すべきかチェック
   UpgradeAutobuyer.shouldExclude = function (upgrade) {
     if (!upgrade) return true;
-    if (this.excludeSwitches && (upgrade.name.includes("switch") || upgrade.name.includes("Switch") || upgrade.name.includes("veil") || upgrade.name.includes("Veil"))) return true;
+    // スイッチ系は常に除外する（設定値に関わらず）
+    if (upgrade.name.includes("switch") || upgrade.name.includes("Switch") || upgrade.name.includes("veil") || upgrade.name.includes("Veil")) return true;
     if (this.excludeCovenants && upgrade.name.includes("Covenant")) return true;
     if (this.excludeResearch && upgrade.pool === "tech") return true;
     return false;
