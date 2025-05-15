@@ -24,9 +24,7 @@ var CMUpgradeAutobuyer = {};
 
   // デバッグログ
   UpgradeAutobuyer.log = function (message) {
-    if (UpgradeAutobuyer.debug) {
-      console.log(`[CM-UA] ${message}`);
-    }
+    // デバッグログ機能は無効化
   };
 
   // CookieClickerのゲーム設定に直接追加
@@ -64,13 +62,9 @@ var CMUpgradeAutobuyer = {};
 
   // オプションメニューに設定項目を追加
   UpgradeAutobuyer.addOptionsMenu = function () {
-    console.log("[UpgradeAutobuyer] addOptionsMenu called");
-
     const optionsMenu = l("menu");
-    console.log("[UpgradeAutobuyer] optionsMenu:", optionsMenu);
 
     if (!optionsMenu) {
-      console.error("[UpgradeAutobuyer] メニュー要素が見つかりません");
       return;
     }
 
@@ -80,35 +74,27 @@ var CMUpgradeAutobuyer = {};
     // 方法1: Cookie Monster専用セクションを探す（すでに存在している場合）
     const cmSection = l("cookieMonsterModMenuSection");
     if (cmSection) {
-      console.log("[UpgradeAutobuyer] Using cookieMonsterModMenuSection");
       subMenu = cmSection;
     }
     // 方法2: preferenceTableBodiesを探す（通常のCookieClicker構造）
     else if (l("preferenceTableBodies")) {
-      console.log("[UpgradeAutobuyer] Using preferenceTableBodies");
       subMenu = l("preferenceTableBodies");
     }
     // 方法3: 既存のセクションを探す
     else {
-      console.log("[UpgradeAutobuyer] Looking for .section elements");
       const sections = optionsMenu.querySelectorAll(".section");
       if (sections && sections.length > 0) {
         subMenu = sections[0];
-        console.log("[UpgradeAutobuyer] Using first .section element");
       }
     }
 
     if (!subMenu) {
-      console.error("[UpgradeAutobuyer] 設定を追加する要素が見つからないので、直接メニューに追加します");
       subMenu = optionsMenu;
     }
-
-    console.log("[UpgradeAutobuyer] Menu elements found, using:", subMenu);
 
     // 既に追加済みセクションがあれば削除
     const existingSection = l("CMUpgradeAutobuyerOptions");
     if (existingSection) {
-      console.log("[UpgradeAutobuyer] Removing existing section");
       existingSection.remove();
     }
 
@@ -212,9 +198,7 @@ var CMUpgradeAutobuyer = {};
     newSection.appendChild(optionsTable);
 
     // オプションメニューに追加
-    console.log("[UpgradeAutobuyer] Appending new section to menu");
     subMenu.appendChild(newSection);
-    console.log("[UpgradeAutobuyer] Section added successfully");
   };
 
   // 設定行を作成するヘルパー関数
@@ -364,7 +348,6 @@ var CMUpgradeAutobuyer = {};
       }
       return bestUpgrade;
     } catch (error) {
-      this.log(`検索エラー: ${error}`);
       return null;
     }
   };
@@ -396,13 +379,10 @@ var CMUpgradeAutobuyer = {};
       }
 
       if (boughtSuccessfully) {
-        this.log(`購入: ${upgradeToBuy.name} (PP: ${upgradeToBuy.pp.toFixed(2)}, 価格: ${upgradeToBuy.price.toLocaleString()})`);
-        Game.Notify(`アップグレード購入`, `${upgradeToBuy.name} を購入しました`, upgrade.icon || [0, 0], 1);
         return true;
       }
       return false;
     } catch (error) {
-      this.log(`購入エラー: ${error}`);
       return false;
     }
   };
@@ -415,41 +395,8 @@ var CMUpgradeAutobuyer = {};
     if (Game.cookies >= best.price) {
       return this.directBuyUpgrade(best);
     } else {
-      // this.log(`待機中: ${best.name} (必要: ${best.price.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`);
       return false;
     }
-  };
-
-  // アップグレード一覧表示（診断用）
-  UpgradeAutobuyer.listAllUpgrades = function () {
-    if (!Game?.UpgradesInStore) {
-      console.log("[CM-UA] アップグレードストアが利用できません。");
-      return;
-    }
-
-    let count = 0;
-    console.log("----- 購入可能なアップグレード一覧 -----");
-
-    for (let i = 0; i < Game.UpgradesInStore.length; i++) {
-      const upgrade = Game.UpgradesInStore[i];
-      if (!upgrade || upgrade.bought || upgrade.locked) continue;
-
-      const price = typeof upgrade.getPrice === "function" ? upgrade.getPrice() : upgrade.price;
-      const affordable = Game.cookies >= price ? "購入可能" : "購入不可";
-      const excluded = this.shouldExclude(upgrade) ? "除外" : "対象";
-
-      let ppValue = "N/A";
-      if (window.CookieMonsterData?.Upgrades?.[upgrade.name]) {
-        const pp = window.CookieMonsterData.Upgrades[upgrade.name].pp;
-        ppValue = typeof pp === "number" && !isNaN(pp) ? pp.toFixed(2) : "無効";
-      }
-
-      console.log(`${i}. ${upgrade.name} - ${affordable} - ${excluded} - PP: ${ppValue} - 価格: ${price.toLocaleString()}`);
-      count++;
-    }
-
-    console.log(`合計: ${count}個のアップグレードが利用可能です`);
-    console.log("-------------------------------------");
   };
 
   // メインループ
@@ -464,7 +411,6 @@ var CMUpgradeAutobuyer = {};
   // 自動購入を開始
   UpgradeAutobuyer.start = function () {
     if (UpgradeAutobuyer.isRunning) {
-      this.log("アップグレード自動購入は既に実行中です。");
       return;
     }
     UpgradeAutobuyer.isRunning = true;
@@ -483,14 +429,12 @@ var CMUpgradeAutobuyer = {};
     }
 
     Game.Notify("アップグレード自動購入", "PP最短のアップグレードを自動的に購入します", [16, 5], 1);
-    this.log("アップグレード自動購入を開始しました。");
     setTimeout(UpgradeAutobuyer.check, UpgradeAutobuyer.interval);
   };
 
   // 自動購入を停止
   UpgradeAutobuyer.stop = function () {
     if (!UpgradeAutobuyer.isRunning) {
-      this.log("アップグレード自動購入は実行されていません。");
       return;
     }
     UpgradeAutobuyer.isRunning = false;
@@ -512,7 +456,6 @@ var CMUpgradeAutobuyer = {};
     }
 
     Game.Notify("アップグレード自動購入", "自動購入を停止しました", [17, 5], 1);
-    this.log("アップグレード自動購入を停止しました。");
   };
 
   // 自動購入の状態を切り替え
@@ -522,54 +465,37 @@ var CMUpgradeAutobuyer = {};
 
   // 初期化処理
   UpgradeAutobuyer.init = function () {
-    console.log("[UpgradeAutobuyer] init called");
-
     // CookieClickerが存在するか確認
     if (typeof Game === "undefined") {
-      console.error("[UpgradeAutobuyer] Game is not defined, CookieClicker might not be loaded");
       return;
     }
 
     // l関数が存在するか確認
     if (typeof l !== "function") {
-      console.error("[UpgradeAutobuyer] l function is not defined, CookieClicker DOM utilities might not be loaded");
-      console.log("[UpgradeAutobuyer] Attempting to define l function");
       window.l = function (id) {
         return document.getElementById(id);
       };
-    } else {
-      console.log("[UpgradeAutobuyer] l function exists");
     }
 
     // 重複初期化チェック
     if (Game.customOptionsMenu && Game.customOptionsMenu.indexOf("UpgradeAutobuyer.addOptionsMenu") !== -1) {
-      console.log("[UpgradeAutobuyer] Already initialized, skipping");
       return;
     }
 
     // 現在のオプションメニュー関数をバックアップ
     if (!Game.customOptionsMenu) {
-      console.log("[UpgradeAutobuyer] Initializing Game.customOptionsMenu");
       Game.customOptionsMenu = [];
       UpgradeAutobuyer.originalUpdateMenu = Game.UpdateMenu;
 
       // Game.UpdateMenu関数をオーバーライド
       Game.UpdateMenu = function () {
-        console.log("[UpgradeAutobuyer] Custom UpdateMenu called");
-
         // 元のメニュー更新関数を実行
         UpgradeAutobuyer.originalUpdateMenu();
 
-        console.log("[UpgradeAutobuyer] Current menu:", Game.onMenu);
-        console.log("[UpgradeAutobuyer] customOptionsMenu:", Game.customOptionsMenu);
-
         // 現在のメニューがオプションメニューであれば、カスタムオプションを追加
         if (Game.onMenu === "prefs") {
-          console.log("[UpgradeAutobuyer] On prefs menu, adding custom options");
           // すべてのカスタムオプションメニュー処理を実行
           Game.customOptionsMenu.forEach(function (customMenuCallback) {
-            console.log(`[UpgradeAutobuyer] Executing custom menu callback: ${customMenuCallback}`);
-
             // 文字列からオブジェクトと関数を取得
             const parts = customMenuCallback.split(".");
             let obj = window;
@@ -580,125 +506,39 @@ var CMUpgradeAutobuyer = {};
               funcName = parts[1];
             }
 
-            console.log(`[UpgradeAutobuyer] Resolving callback: object=${parts[0]}, function=${funcName}`, obj);
-
             if (obj && typeof obj[funcName] === "function") {
               try {
                 obj[funcName]();
-              } catch (e) {
-                console.error(`Error in custom menu callback ${customMenuCallback}:`, e);
-              }
-            } else {
-              console.warn(`[UpgradeAutobuyer] Warning: ${customMenuCallback} is not a properly resolved function`);
-              console.log(
-                "Available window functions:",
-                Object.keys(window)
-                  .filter((key) => typeof window[key] === "function")
-                  .slice(0, 20)
-              );
-
-              if (parts[0] === "UpgradeAutobuyer") {
-                console.log("UpgradeAutobuyer properties:", Object.keys(UpgradeAutobuyer));
-                console.log("addOptionsMenu exists on UpgradeAutobuyer:", typeof UpgradeAutobuyer.addOptionsMenu === "function");
-              }
+              } catch (e) {}
             }
           });
-        } else {
-          console.log(`[UpgradeAutobuyer] Current menu is not prefs but: ${Game.onMenu}`);
         }
       };
-    } else {
-      console.log("[UpgradeAutobuyer] Game.customOptionsMenu already exists:", Game.customOptionsMenu);
     }
 
     // カスタムメニューに登録
     const callbackName = "UpgradeAutobuyer.addOptionsMenu";
     if (Game.customOptionsMenu.indexOf(callbackName) === -1) {
-      console.log(`[UpgradeAutobuyer] Registering ${callbackName}`);
       Game.customOptionsMenu.push(callbackName);
-    } else {
-      console.log(`[UpgradeAutobuyer] ${callbackName} already registered`);
     }
 
     // メニュー更新の手動トリガー
-    console.log(`[UpgradeAutobuyer] Current menu state: ${Game.onMenu}`);
     if (Game.onMenu === "prefs") {
-      console.log("[UpgradeAutobuyer] Currently on prefs menu, calling addOptionsMenu directly");
       UpgradeAutobuyer.addOptionsMenu();
     } else {
-      console.log("[UpgradeAutobuyer] Not on prefs menu, trying to open Options menu");
       try {
         // ゲームのOption APIが利用可能ならそれを使う
         if (typeof Game.ShowMenu === "function") {
           Game.ShowMenu("prefs");
-          console.log("[UpgradeAutobuyer] Opened prefs menu via Game.ShowMenu");
         }
-      } catch (e) {
-        console.error("[UpgradeAutobuyer] Error opening menu:", e);
-      }
+      } catch (e) {}
     }
 
     // グローバルWindowオブジェクトに関数を追加
     if (typeof window.UpgradeAutobuyer === "undefined") {
-      console.log("[UpgradeAutobuyer] Adding UpgradeAutobuyer to window object");
       window.UpgradeAutobuyer = UpgradeAutobuyer;
     }
-
-    // メニュー要素を定期的にチェック
-    setTimeout(function () {
-      console.log("[UpgradeAutobuyer] Delayed check for menu elements");
-      console.log("menu element:", document.getElementById("menu"));
-      console.log("preferenceTableBodies:", document.getElementById("preferenceTableBodies"));
-
-      if (document.getElementById("menu") && !document.getElementById("preferenceTableBodies")) {
-        console.log("[UpgradeAutobuyer] Menu exists but preferenceTableBodies not found, investigating structure");
-        const menuElement = document.getElementById("menu");
-        console.log(
-          "Menu children:",
-          Array.from(menuElement.children).map((el) => el.id || el.className || el.tagName)
-        );
-
-        // セクションの構造を確認
-        const sections = menuElement.querySelectorAll(".section");
-        console.log("Section count:", sections.length);
-        sections.forEach((section, i) => {
-          console.log(`Section ${i}:`, section.id || section.className);
-          console.log(
-            `Section ${i} children:`,
-            Array.from(section.children).map((el) => el.id || el.className || el.tagName)
-          );
-        });
-
-        // 既存の設定要素の構造を調査
-        const subsections = menuElement.querySelectorAll(".subsection");
-        console.log("Subsection count:", subsections.length);
-        if (subsections.length > 0) {
-          console.log("First subsection:", subsections[0].id || subsections[0].className);
-          console.log(
-            "First subsection children:",
-            Array.from(subsections[0].children).map((el) => el.id || el.className || el.tagName)
-          );
-
-          // 実際の設定が追加されている場所を特定
-          if (subsections[0].querySelector(".listing")) {
-            console.log("Found .listing element, this might be where settings should go");
-            const listingParent = subsections[0].querySelector(".listing").parentNode;
-            console.log("Listing parent:", listingParent.id || listingParent.className || listingParent.tagName);
-
-            // セクションが追加されるべき場所を検出
-            UpgradeAutobuyer.targetMenuElement = listingParent;
-            console.log("Set targetMenuElement for future use");
-          }
-        }
-      }
-    }, 1000);
   };
-
-  // 初期化時のメッセージ
-  console.log("Cookie Monster - アップグレード自動購入 (CM-UpgradeAutobuyer) が読み込まれました。");
-  console.log("使用方法: CMUpgradeAutobuyer.start() で開始、CMUpgradeAutobuyer.stop() で停止");
-  console.log("オプションメニューから設定できます");
-  Game.Notify("CM-UpgradeAutobuyer", "アップグレード自動購入スクリプトが読み込まれました", [4, 6], 5);
 
   // 初期化を実行
   setTimeout(UpgradeAutobuyer.init, 1000);
@@ -720,7 +560,6 @@ var CMUpgradeAutobuyer = {};
 
             // オプションメニューが開かれた場合、設定を表示
             if (what === "prefs") {
-              console.log("[UpgradeAutobuyer] Options menu opened, triggering addOptionsMenu");
               // 一定の遅延を設けてメニュー要素が確実に存在するようにする
               setTimeout(function () {
                 if (typeof UpgradeAutobuyer.addOptionsMenu === "function") {
