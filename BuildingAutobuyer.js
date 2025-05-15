@@ -1,10 +1,12 @@
+// 初期化の問題を修正
+// 最初にオブジェクトを定義して、そのあとで拡張する
+var CMBuildingAutobuyer = {};
+
 //===========================================================================
 // BuildingAutobuyer.js
 // Cookie Monster 建物自動購入スクリプト
 // 使用方法: CMBuildingAutobuyer.start() で開始、CMBuildingAutobuyer.stop() で停止
 //===========================================================================
-
-const CMBuildingAutobuyer = CMBuildingAutobuyer || {};
 
 (function (BuildingAutobuyer) {
   // 設定
