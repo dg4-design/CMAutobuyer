@@ -275,7 +275,7 @@ var CMBuildingAutobuyer = {};
     if (BuildingAutobuyer.targetBuilding) {
       const building = Game.Objects[BuildingAutobuyer.targetBuilding.name];
       if (!building) {
-        this.log(`保存された建物 "${BuildingAutobuyer.targetBuilding.name}" が見つかりません。`);
+        BuildingAutobuyer.log(`保存された建物 "${BuildingAutobuyer.targetBuilding.name}" が見つかりません。`);
         BuildingAutobuyer.targetBuilding = null;
         return false;
       }
@@ -289,8 +289,9 @@ var CMBuildingAutobuyer = {};
 
       // 現在の購入モードに必要な数量を確保するまで購入しない
       if (Game.cookies >= building.bulkPrice) {
-        building.buy(); // Game.buyBulk に基づいて購入される
-        this.log(
+        // 正しい購入方法で購入
+        building.buy(BuildingAutobuyer.targetBuilding.bulkAmount);
+        BuildingAutobuyer.log(
           `購入: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (PP: ${BuildingAutobuyer.targetBuilding.pp.toFixed(
             2
           )}, 価格: ${building.bulkPrice.toLocaleString()})`
@@ -309,19 +310,19 @@ var CMBuildingAutobuyer = {};
       Game.buyMode = oldBuyMode;
       Game.buyBulk = oldBuyBulk;
       Game.CalculateGains();
-      this.log(
+      BuildingAutobuyer.log(
         `待機中: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`
       );
       return false;
     }
 
     // 新しいベスト購入を見つける
-    const best = this.findBestPurchase();
+    const best = BuildingAutobuyer.findBestPurchase();
     if (!best) return false;
 
     const building = Game.Objects[best.name];
     if (!building) {
-      this.log(`建物 "${best.name}" が見つかりません。`);
+      BuildingAutobuyer.log(`建物 "${best.name}" が見つかりません。`);
       return false;
     }
 
@@ -336,8 +337,8 @@ var CMBuildingAutobuyer = {};
     // 現在選択されている購入量で購入できるかチェック
     if (Game.cookies >= building.bulkPrice) {
       // 選択された数量でのみ購入
-      building.buy(best.bulkAmount);
-      this.log(`購入: ${best.name} x${best.bulkAmount} (PP: ${best.pp.toFixed(2)}, 価格: ${building.bulkPrice.toLocaleString()})`);
+      building.buy();
+      BuildingAutobuyer.log(`購入: ${best.name} x${best.bulkAmount} (PP: ${best.pp.toFixed(2)}, 価格: ${building.bulkPrice.toLocaleString()})`);
 
       Game.buyMode = oldBuyMode;
       Game.buyBulk = oldBuyBulk;
@@ -351,7 +352,7 @@ var CMBuildingAutobuyer = {};
     Game.buyMode = oldBuyMode;
     Game.buyBulk = oldBuyBulk;
     Game.CalculateGains();
-    this.log(`待機対象を設定: ${best.name} x${best.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`);
+    BuildingAutobuyer.log(`待機対象を設定: ${best.name} x${best.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`);
     return false;
   };
 
@@ -367,20 +368,20 @@ var CMBuildingAutobuyer = {};
   // 自動購入を開始
   BuildingAutobuyer.start = function () {
     if (BuildingAutobuyer.isRunning) {
-      this.log("建物自動購入は既に実行中です。");
+      BuildingAutobuyer.log("建物自動購入は既に実行中です。");
       return;
     }
     BuildingAutobuyer.isRunning = true;
     BuildingAutobuyer.timerId = setInterval(BuildingAutobuyer.check, BuildingAutobuyer.interval);
     Game.Notify("建物自動購入", "PP最短の建物を自動的に購入します", [16, 5], 1);
-    this.log("建物自動購入を開始しました。");
+    BuildingAutobuyer.log("建物自動購入を開始しました。");
     setTimeout(BuildingAutobuyer.check, BuildingAutobuyer.interval);
   };
 
   // 自動購入を停止
   BuildingAutobuyer.stop = function () {
     if (!BuildingAutobuyer.isRunning) {
-      this.log("建物自動購入は実行されていません。");
+      BuildingAutobuyer.log("建物自動購入は実行されていません。");
       return;
     }
     BuildingAutobuyer.isRunning = false;
@@ -391,7 +392,7 @@ var CMBuildingAutobuyer = {};
     // ターゲット建物をクリア
     BuildingAutobuyer.targetBuilding = null;
     Game.Notify("建物自動購入", "自動購入を停止しました", [17, 5], 1);
-    this.log("建物自動購入を停止しました。");
+    BuildingAutobuyer.log("建物自動購入を停止しました。");
   };
 
   // 自動購入の状態を切り替え
@@ -403,7 +404,7 @@ var CMBuildingAutobuyer = {};
   BuildingAutobuyer.init = function () {
     // 設定ボタンをゲームに追加
     if (Game && Game.ready) {
-      this.addSettingsButton();
+      BuildingAutobuyer.addSettingsButton();
     } else {
       const checkGameLoaded = setInterval(function () {
         if (Game && Game.ready) {
