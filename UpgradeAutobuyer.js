@@ -64,13 +64,57 @@ var CMUpgradeAutobuyer = {};
 
   // オプションメニューに設定項目を追加
   UpgradeAutobuyer.addOptionsMenu = function () {
+    console.log("[UpgradeAutobuyer] addOptionsMenu called");
+
     const optionsMenu = l("menu");
-    const subMenu = l("preferenceTableBodies");
-    if (!subMenu) return; // メニューが見つからない場合は処理しない
+    console.log("[UpgradeAutobuyer] optionsMenu:", optionsMenu);
+
+    const subMenu = UpgradeAutobuyer.targetMenuElement || l("preferenceTableBodies");
+    console.log("[UpgradeAutobuyer] subMenu:", subMenu);
+
+    if (!subMenu) {
+      console.error("[UpgradeAutobuyer] Target menu element not found");
+
+      // メニュー要素を探す試み
+      console.log("メニュー要素を探索します:");
+      console.log("menu element:", document.getElementById("menu"));
+      const allDivs = Array.from(document.querySelectorAll("#menu div"));
+      console.log("menu children count:", allDivs.length);
+      console.log(
+        "menu structure:",
+        Array.from(document.querySelectorAll("#menu > *")).map((el) => el.id || el.className || el.tagName)
+      );
+
+      // 既存のオプションを検索して構造を特定
+      const optionElements = document.querySelectorAll("#menu .option");
+      if (optionElements.length > 0) {
+        console.log("Found existing options, checking parent structure");
+        const listingParent = optionElements[0].closest(".listing");
+        if (listingParent) {
+          console.log("Found listing parent:", listingParent.id || listingParent.className || listingParent.tagName);
+          const sectionParent = listingParent.parentNode;
+          console.log("Section parent:", sectionParent.id || sectionParent.className || sectionParent.tagName);
+
+          // セクションが追加されるべき場所を検出
+          UpgradeAutobuyer.targetMenuElement = sectionParent;
+          console.log("Set targetMenuElement for future use");
+
+          // 要素を取得してもう一度試行
+          return UpgradeAutobuyer.addOptionsMenu();
+        }
+      }
+
+      return; // メニューが見つからない場合は処理しない
+    }
+
+    console.log("[UpgradeAutobuyer] Menu elements found");
 
     // 既に追加済みセクションがあれば削除
     const existingSection = l("CMUpgradeAutobuyerOptions");
-    if (existingSection) existingSection.remove();
+    if (existingSection) {
+      console.log("[UpgradeAutobuyer] Removing existing section");
+      existingSection.remove();
+    }
 
     // 新しいセクションを作成
     const newSection = document.createElement("div");
@@ -480,44 +524,172 @@ var CMUpgradeAutobuyer = {};
 
   // 初期化処理
   UpgradeAutobuyer.init = function () {
-    // 設定をCookieClickerメニューに追加
-    if (Game && Game.ready) {
-      this.setupMenu();
-      this.injectIntoOptions();
-    } else {
-      const checkGameLoaded = setInterval(function () {
-        if (Game && Game.ready) {
-          clearInterval(checkGameLoaded);
-          UpgradeAutobuyer.setupMenu();
-          UpgradeAutobuyer.injectIntoOptions();
-        }
-      }, 1000);
+    console.log("[UpgradeAutobuyer] init called");
+
+    // CookieClickerが存在するか確認
+    if (typeof Game === "undefined") {
+      console.error("[UpgradeAutobuyer] Game is not defined, CookieClicker might not be loaded");
+      return;
     }
 
-    // CookieMonsterフレームワークが後でロードされる場合に備えて監視
-    const checkCMFramework = setInterval(function () {
-      if (Game?.mods?.cookieMonsterFramework) {
-        clearInterval(checkCMFramework);
-        UpgradeAutobuyer.setupMenu();
+    // l関数が存在するか確認
+    if (typeof l !== "function") {
+      console.error("[UpgradeAutobuyer] l function is not defined, CookieClicker DOM utilities might not be loaded");
+      console.log("[UpgradeAutobuyer] Attempting to define l function");
+      window.l = function (id) {
+        return document.getElementById(id);
+      };
+    } else {
+      console.log("[UpgradeAutobuyer] l function exists");
+    }
 
-        // 設定から初期状態を読み込む
-        if (Game.mods.cookieMonsterFramework.saveData?.cmUpgradeAutobuyer?.settings) {
-          const settings = Game.mods.cookieMonsterFramework.saveData.cmUpgradeAutobuyer.settings;
+    // 重複初期化チェック
+    if (Game.customOptionsMenu && Game.customOptionsMenu.indexOf("UpgradeAutobuyer.addOptionsMenu") !== -1) {
+      console.log("[UpgradeAutobuyer] Already initialized, skipping");
+      return;
+    }
 
-          if (settings.AutoBuyerEnabled === 1 && !UpgradeAutobuyer.isRunning) {
-            UpgradeAutobuyer.start();
-          }
+    // 現在のオプションメニュー関数をバックアップ
+    if (!Game.customOptionsMenu) {
+      console.log("[UpgradeAutobuyer] Initializing Game.customOptionsMenu");
+      Game.customOptionsMenu = [];
+      UpgradeAutobuyer.originalUpdateMenu = Game.UpdateMenu;
 
-          if (settings.ExcludeSwitches !== undefined) {
-            UpgradeAutobuyer.excludeSwitches = settings.ExcludeSwitches === 1;
-          }
+      // Game.UpdateMenu関数をオーバーライド
+      Game.UpdateMenu = function () {
+        console.log("[UpgradeAutobuyer] Custom UpdateMenu called");
 
-          if (settings.ExcludeResearch !== undefined) {
-            UpgradeAutobuyer.excludeResearch = settings.ExcludeResearch === 1;
-          }
+        // 元のメニュー更新関数を実行
+        UpgradeAutobuyer.originalUpdateMenu();
 
-          if (settings.ExcludeCovenants !== undefined) {
-            UpgradeAutobuyer.excludeCovenants = settings.ExcludeCovenants === 1;
+        console.log("[UpgradeAutobuyer] Current menu:", Game.onMenu);
+        console.log("[UpgradeAutobuyer] customOptionsMenu:", Game.customOptionsMenu);
+
+        // 現在のメニューがオプションメニューであれば、カスタムオプションを追加
+        if (Game.onMenu === "prefs") {
+          console.log("[UpgradeAutobuyer] On prefs menu, adding custom options");
+          // すべてのカスタムオプションメニュー処理を実行
+          Game.customOptionsMenu.forEach(function (customMenuCallback) {
+            console.log(`[UpgradeAutobuyer] Executing custom menu callback: ${customMenuCallback}`);
+
+            // 文字列からオブジェクトと関数を取得
+            const parts = customMenuCallback.split(".");
+            let obj = window;
+            let funcName = customMenuCallback;
+
+            if (parts.length > 1) {
+              obj = window[parts[0]];
+              funcName = parts[1];
+            }
+
+            console.log(`[UpgradeAutobuyer] Resolving callback: object=${parts[0]}, function=${funcName}`, obj);
+
+            if (obj && typeof obj[funcName] === "function") {
+              try {
+                obj[funcName]();
+              } catch (e) {
+                console.error(`Error in custom menu callback ${customMenuCallback}:`, e);
+              }
+            } else {
+              console.warn(`[UpgradeAutobuyer] Warning: ${customMenuCallback} is not a properly resolved function`);
+              console.log(
+                "Available window functions:",
+                Object.keys(window)
+                  .filter((key) => typeof window[key] === "function")
+                  .slice(0, 20)
+              );
+
+              if (parts[0] === "UpgradeAutobuyer") {
+                console.log("UpgradeAutobuyer properties:", Object.keys(UpgradeAutobuyer));
+                console.log("addOptionsMenu exists on UpgradeAutobuyer:", typeof UpgradeAutobuyer.addOptionsMenu === "function");
+              }
+            }
+          });
+        } else {
+          console.log(`[UpgradeAutobuyer] Current menu is not prefs but: ${Game.onMenu}`);
+        }
+      };
+    } else {
+      console.log("[UpgradeAutobuyer] Game.customOptionsMenu already exists:", Game.customOptionsMenu);
+    }
+
+    // カスタムメニューに登録
+    const callbackName = "UpgradeAutobuyer.addOptionsMenu";
+    if (Game.customOptionsMenu.indexOf(callbackName) === -1) {
+      console.log(`[UpgradeAutobuyer] Registering ${callbackName}`);
+      Game.customOptionsMenu.push(callbackName);
+    } else {
+      console.log(`[UpgradeAutobuyer] ${callbackName} already registered`);
+    }
+
+    // メニュー更新の手動トリガー
+    console.log(`[UpgradeAutobuyer] Current menu state: ${Game.onMenu}`);
+    if (Game.onMenu === "prefs") {
+      console.log("[UpgradeAutobuyer] Currently on prefs menu, calling addOptionsMenu directly");
+      UpgradeAutobuyer.addOptionsMenu();
+    } else {
+      console.log("[UpgradeAutobuyer] Not on prefs menu, trying to open Options menu");
+      try {
+        // ゲームのOption APIが利用可能ならそれを使う
+        if (typeof Game.ShowMenu === "function") {
+          Game.ShowMenu("prefs");
+          console.log("[UpgradeAutobuyer] Opened prefs menu via Game.ShowMenu");
+        }
+      } catch (e) {
+        console.error("[UpgradeAutobuyer] Error opening menu:", e);
+      }
+    }
+
+    // グローバルWindowオブジェクトに関数を追加
+    if (typeof window.UpgradeAutobuyer === "undefined") {
+      console.log("[UpgradeAutobuyer] Adding UpgradeAutobuyer to window object");
+      window.UpgradeAutobuyer = UpgradeAutobuyer;
+    }
+
+    // メニュー要素を定期的にチェック
+    setTimeout(function () {
+      console.log("[UpgradeAutobuyer] Delayed check for menu elements");
+      console.log("menu element:", document.getElementById("menu"));
+      console.log("preferenceTableBodies:", document.getElementById("preferenceTableBodies"));
+
+      if (document.getElementById("menu") && !document.getElementById("preferenceTableBodies")) {
+        console.log("[UpgradeAutobuyer] Menu exists but preferenceTableBodies not found, investigating structure");
+        const menuElement = document.getElementById("menu");
+        console.log(
+          "Menu children:",
+          Array.from(menuElement.children).map((el) => el.id || el.className || el.tagName)
+        );
+
+        // セクションの構造を確認
+        const sections = menuElement.querySelectorAll(".section");
+        console.log("Section count:", sections.length);
+        sections.forEach((section, i) => {
+          console.log(`Section ${i}:`, section.id || section.className);
+          console.log(
+            `Section ${i} children:`,
+            Array.from(section.children).map((el) => el.id || el.className || el.tagName)
+          );
+        });
+
+        // 既存の設定要素の構造を調査
+        const subsections = menuElement.querySelectorAll(".subsection");
+        console.log("Subsection count:", subsections.length);
+        if (subsections.length > 0) {
+          console.log("First subsection:", subsections[0].id || subsections[0].className);
+          console.log(
+            "First subsection children:",
+            Array.from(subsections[0].children).map((el) => el.id || el.className || el.tagName)
+          );
+
+          // 実際の設定が追加されている場所を特定
+          if (subsections[0].querySelector(".listing")) {
+            console.log("Found .listing element, this might be where settings should go");
+            const listingParent = subsections[0].querySelector(".listing").parentNode;
+            console.log("Listing parent:", listingParent.id || listingParent.className || listingParent.tagName);
+
+            // セクションが追加されるべき場所を検出
+            UpgradeAutobuyer.targetMenuElement = listingParent;
+            console.log("Set targetMenuElement for future use");
           }
         }
       }
