@@ -75,24 +75,35 @@ var CMUpgradeAutobuyer = {};
     }
 
     // CookieClickerの設定セクションを特定
-    let subMenu = l("preferenceTableBodies");
+    let subMenu = null;
 
-    // 通常の要素が見つからない場合、セクション要素を探す
-    if (!subMenu) {
-      console.log("[UpgradeAutobuyer] preferenceTableBodies not found, looking for .section");
+    // 方法1: Cookie Monster専用セクションを探す（すでに存在している場合）
+    const cmSection = l("cookieMonsterModMenuSection");
+    if (cmSection) {
+      console.log("[UpgradeAutobuyer] Using cookieMonsterModMenuSection");
+      subMenu = cmSection;
+    }
+    // 方法2: preferenceTableBodiesを探す（通常のCookieClicker構造）
+    else if (l("preferenceTableBodies")) {
+      console.log("[UpgradeAutobuyer] Using preferenceTableBodies");
+      subMenu = l("preferenceTableBodies");
+    }
+    // 方法3: 既存のセクションを探す
+    else {
+      console.log("[UpgradeAutobuyer] Looking for .section elements");
       const sections = optionsMenu.querySelectorAll(".section");
       if (sections && sections.length > 0) {
         subMenu = sections[0];
-        console.log("[UpgradeAutobuyer] Using first .section element instead");
+        console.log("[UpgradeAutobuyer] Using first .section element");
       }
     }
 
     if (!subMenu) {
-      console.error("[UpgradeAutobuyer] 設定を追加する要素が見つかりませんでした");
-      return;
+      console.error("[UpgradeAutobuyer] 設定を追加する要素が見つからないので、直接メニューに追加します");
+      subMenu = optionsMenu;
     }
 
-    console.log("[UpgradeAutobuyer] Menu elements found");
+    console.log("[UpgradeAutobuyer] Menu elements found, using:", subMenu);
 
     // 既に追加済みセクションがあれば削除
     const existingSection = l("CMUpgradeAutobuyerOptions");
