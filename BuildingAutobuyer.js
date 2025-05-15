@@ -287,6 +287,7 @@ var CMBuildingAutobuyer = {};
       Game.buyBulk = BuildingAutobuyer.targetBuilding.bulkAmount;
       Game.CalculateGains(); // bulkPriceが更新されるようにする
 
+      // 現在の購入モードに必要な数量を確保するまで購入しない
       if (Game.cookies >= building.bulkPrice) {
         building.buy(); // Game.buyBulk に基づいて購入される
         this.log(
@@ -327,12 +328,15 @@ var CMBuildingAutobuyer = {};
     const oldBuyMode = Game.buyMode;
     const oldBuyBulk = Game.buyBulk;
 
+    // 常に選択された量で購入するように設定
     Game.buyMode = 1;
     Game.buyBulk = best.bulkAmount;
     Game.CalculateGains(); // bulkPriceが更新されるようにする
 
+    // 現在選択されている購入量で購入できるかチェック
     if (Game.cookies >= building.bulkPrice) {
-      building.buy(); // Game.buyBulk に基づいて購入される
+      // 選択された数量でのみ購入
+      building.buy(best.bulkAmount);
       this.log(`購入: ${best.name} x${best.bulkAmount} (PP: ${best.pp.toFixed(2)}, 価格: ${building.bulkPrice.toLocaleString()})`);
 
       Game.buyMode = oldBuyMode;
