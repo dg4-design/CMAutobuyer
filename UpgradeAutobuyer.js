@@ -195,6 +195,15 @@ var CMUpgradeAutobuyer = {};
     UpgradeAutobuyer.isRunning ? UpgradeAutobuyer.stop() : UpgradeAutobuyer.start();
   };
 
+  // Cookie Monster設定カテゴリに「自動購入」カテゴリを追加
+  UpgradeAutobuyer.addAutobuyerCategory = function () {
+    if (typeof CM !== "undefined" && CM.tn) {
+      // 「自動購入」カテゴリを追加
+      CM.tn.Autobuyer = "自動購入";
+      this.log("自動購入カテゴリを追加しました");
+    }
+  };
+
   // Cookie Monster設定に統合する
   UpgradeAutobuyer.injectSettings = function () {
     if (!CM || !CM.Disp || !CM.Disp.UpdateSettings) {
@@ -202,36 +211,43 @@ var CMUpgradeAutobuyer = {};
       return;
     }
 
+    // 自動購入カテゴリを追加
+    this.addAutobuyerCategory();
+
     // メイン設定オブジェクトを作成
     CM.ConfigData[this.settingName] = {
-      label: "UpgradeAutobuyer",
+      type: "bool",
+      label: ["UpgradeAutobuyer オフ", "UpgradeAutobuyer オン"],
       desc: "アップグレードの自動購入を有効化（PP最短を自動購入）",
-      settings: ["オフ", "オン"],
+      group: "Autobuyer",
       toggle: true,
       default: 0,
     };
 
     // 除外設定を追加
     CM.ConfigData[this.excludeSettingPrefix + "Switches"] = {
-      label: "   スイッチ除外",
+      type: "bool",
+      label: ["スイッチ除外 オフ", "スイッチ除外 オン"],
       desc: "Golden/Shimmering Switch などのスイッチ系アップグレードを自動購入から除外",
-      settings: ["オフ", "オン"],
+      group: "Autobuyer",
       toggle: true,
       default: 1,
     };
 
     CM.ConfigData[this.excludeSettingPrefix + "Research"] = {
-      label: "   研究除外",
+      type: "bool",
+      label: ["研究除外 オフ", "研究除外 オン"],
       desc: "研究アップグレード（負の効果を持つ可能性あり）を自動購入から除外",
-      settings: ["オフ", "オン"],
+      group: "Autobuyer",
       toggle: true,
       default: 0,
     };
 
     CM.ConfigData[this.excludeSettingPrefix + "Covenants"] = {
-      label: "   契約除外",
+      type: "bool",
+      label: ["契約除外 オフ", "契約除外 オン"],
       desc: "Elder Covenant などの契約系アップグレードを自動購入から除外",
-      settings: ["オフ", "オン"],
+      group: "Autobuyer",
       toggle: true,
       default: 1,
     };
@@ -269,14 +285,6 @@ var CMUpgradeAutobuyer = {};
     CM.Callback[this.excludeSettingPrefix + "Covenants"] = function () {
       UpgradeAutobuyer.excludeCovenants = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Covenants"] === 1;
     };
-
-    // 設定画面を更新するため
-    if (typeof CM.Disp.AddMenuPref === "function") {
-      CM.Disp.AddMenuPref("自動購入", this.settingName);
-      CM.Disp.AddMenuPref("自動購入", this.excludeSettingPrefix + "Switches");
-      CM.Disp.AddMenuPref("自動購入", this.excludeSettingPrefix + "Research");
-      CM.Disp.AddMenuPref("自動購入", this.excludeSettingPrefix + "Covenants");
-    }
 
     // 現在の設定を適用
     UpgradeAutobuyer.excludeSwitches = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Switches"] === 1;
