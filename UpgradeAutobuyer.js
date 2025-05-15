@@ -1,10 +1,12 @@
+// 初期化の問題を修正
+// 最初にオブジェクトを定義して、そのあとで拡張する
+var CMUpgradeAutobuyer = {};
+
 //===========================================================================
 // UpgradeAutobuyer.js
 // Cookie Monster アップグレード自動購入スクリプト
 // 使用方法: CMUpgradeAutobuyer.start() で開始、CMUpgradeAutobuyer.stop() で停止
 //===========================================================================
-
-const CMUpgradeAutobuyer = CMUpgradeAutobuyer || {};
 
 (function (UpgradeAutobuyer) {
   // 設定
