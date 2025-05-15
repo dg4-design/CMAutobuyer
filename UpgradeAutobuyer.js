@@ -43,72 +43,119 @@ var CMUpgradeAutobuyer = {};
 
   // 設定メニューにオプションを追加
   UpgradeAutobuyer.addOptionsMenu = function () {
-    if (!Game.customOptionsMenu) {
-      Game.customOptionsMenu = [];
-    }
-
-    // すでに登録済みの場合、建物自動購入に追加
-    let menuExists = false;
-    let menuIndex = -1;
-
-    for (let i = 0; i < Game.customOptionsMenu.length; i++) {
-      if (Game.customOptionsMenu[i].name === "CMAutobuyer") {
-        menuExists = true;
-        menuIndex = i;
-        break;
+    // メニュー追加は BuildingAutobuyer.js で一括して行うため、
+    // このモジュールでは何もしない（UpgradeAutobuyerの設定も一緒に追加される）
+    // 単独で動作する場合のみ、BuildingAutobuyerのメニュー関数を使用
+    if (!window.CMBuildingAutobuyer) {
+      // 元のGame.Drawメソッドをバックアップ
+      if (!Game.Backup_DrawMenu) {
+        Game.Backup_DrawMenu = Game.DrawMenu;
       }
-    }
 
-    // アップグレード自動購入の設定オプション
-    const upgradeOptions = [
-      {
-        name: "UpgradeAutobuyer",
-        label: ["アップグレード自動購入オフ", "アップグレード自動購入オン"],
-        desc: "PP最短のアップグレードを自動的に購入します",
-        callback: function (value) {
-          if (value) {
-            UpgradeAutobuyer.start();
-          } else {
-            UpgradeAutobuyer.stop();
+      // メニュー描画関数をオーバーライド
+      Game.DrawMenu = function () {
+        // 元の描画関数を呼び出す
+        Game.Backup_DrawMenu();
+
+        // 設定画面のときのみ
+        if (Game.onMenu === "prefs") {
+          const menu = l("menu");
+          let prefsSection = menu.querySelector(".section");
+
+          // もし元の設定セクションが見つからなければ、何もしない
+          if (!prefsSection) return;
+
+          // 既存のセクションを探す
+          let cmSection = menu.querySelector(".section-cmAutobuyer");
+
+          // まだCM Autobuyerセクションがなければ作成
+          if (!cmSection) {
+            cmSection = document.createElement("div");
+            cmSection.className = "section section-cmAutobuyer";
+
+            // タイトルを追加
+            const title = document.createElement("div");
+            title.className = "title";
+            title.textContent = "Cookie Monster Autobuyer";
+            cmSection.appendChild(title);
+
+            // アップグレード自動購入設定
+            const listing1 = document.createElement("div");
+            listing1.className = "listing";
+
+            const upgradeAutoLabel = document.createElement("a");
+            upgradeAutoLabel.className = "option" + (Game.prefs.UpgradeAutobuyer ? "" : " off");
+            upgradeAutoLabel.textContent = Game.prefs.UpgradeAutobuyer ? "オン" : "オフ";
+            upgradeAutoLabel.onclick = function () {
+              Game.Toggle("UpgradeAutobuyer", "upgradeAutoLabel", ["オフ", "オン"], function () {
+                if (Game.prefs.UpgradeAutobuyer) {
+                  UpgradeAutobuyer.start();
+                } else {
+                  UpgradeAutobuyer.stop();
+                }
+              });
+            };
+
+            listing1.appendChild(upgradeAutoLabel);
+            listing1.appendChild(document.createTextNode(" アップグレード自動購入：PP最短のアップグレードを自動的に購入"));
+            cmSection.appendChild(listing1);
+
+            // スイッチ系除外設定
+            const listing2 = document.createElement("div");
+            listing2.className = "listing";
+
+            const switchesLabel = document.createElement("a");
+            switchesLabel.className = "option" + (Game.prefs.UpgradeExcludeSwitches ? "" : " off");
+            switchesLabel.textContent = Game.prefs.UpgradeExcludeSwitches ? "オン" : "オフ";
+            switchesLabel.onclick = function () {
+              Game.Toggle("UpgradeExcludeSwitches", "switchesLabel", ["オフ", "オン"], function () {
+                UpgradeAutobuyer.excludeSwitches = Game.prefs.UpgradeExcludeSwitches;
+              });
+            };
+
+            listing2.appendChild(switchesLabel);
+            listing2.appendChild(document.createTextNode(" スイッチ系除外：Golden Switch/Shimmering Veil などを除外"));
+            cmSection.appendChild(listing2);
+
+            // 研究除外設定
+            const listing3 = document.createElement("div");
+            listing3.className = "listing";
+
+            const researchLabel = document.createElement("a");
+            researchLabel.className = "option" + (Game.prefs.UpgradeExcludeResearch ? "" : " off");
+            researchLabel.textContent = Game.prefs.UpgradeExcludeResearch ? "オン" : "オフ";
+            researchLabel.onclick = function () {
+              Game.Toggle("UpgradeExcludeResearch", "researchLabel", ["オフ", "オン"], function () {
+                UpgradeAutobuyer.excludeResearch = Game.prefs.UpgradeExcludeResearch;
+              });
+            };
+
+            listing3.appendChild(researchLabel);
+            listing3.appendChild(document.createTextNode(" 研究除外：負の効果を持つ可能性のある研究アップグレードを除外"));
+            cmSection.appendChild(listing3);
+
+            // 契約系除外設定
+            const listing4 = document.createElement("div");
+            listing4.className = "listing";
+
+            const covenantsLabel = document.createElement("a");
+            covenantsLabel.className = "option" + (Game.prefs.UpgradeExcludeCovenants ? "" : " off");
+            covenantsLabel.textContent = Game.prefs.UpgradeExcludeCovenants ? "オン" : "オフ";
+            covenantsLabel.onclick = function () {
+              Game.Toggle("UpgradeExcludeCovenants", "covenantsLabel", ["オフ", "オン"], function () {
+                UpgradeAutobuyer.excludeCovenants = Game.prefs.UpgradeExcludeCovenants;
+              });
+            };
+
+            listing4.appendChild(covenantsLabel);
+            listing4.appendChild(document.createTextNode(" 契約系除外：Elder Covenantなどの契約系アップグレードを除外"));
+            cmSection.appendChild(listing4);
+
+            // メニューに追加
+            prefsSection.parentNode.insertBefore(cmSection, prefsSection.nextSibling);
           }
-        },
-      },
-      {
-        name: "UpgradeExcludeSwitches",
-        label: ["スイッチ系除外オフ", "スイッチ系除外オン"],
-        desc: "Golden Switch/Shimmering Veil など、手動操作が必要なアップグレードを除外します",
-        callback: function (value) {
-          UpgradeAutobuyer.excludeSwitches = !!value;
-        },
-      },
-      {
-        name: "UpgradeExcludeResearch",
-        label: ["研究除外オフ", "研究除外オン"],
-        desc: "負の効果を持つ可能性のある研究アップグレードを除外します",
-        callback: function (value) {
-          UpgradeAutobuyer.excludeResearch = !!value;
-        },
-      },
-      {
-        name: "UpgradeExcludeCovenants",
-        label: ["契約系除外オフ", "契約系除外オン"],
-        desc: "Elder Covenantなどの契約系アップグレードを除外します",
-        callback: function (value) {
-          UpgradeAutobuyer.excludeCovenants = !!value;
-        },
-      },
-    ];
-
-    if (menuExists) {
-      // 既存のメニューに追加
-      Game.customOptionsMenu[menuIndex].options = Game.customOptionsMenu[menuIndex].options.concat(upgradeOptions);
-    } else {
-      // 新しいメニューを作成
-      Game.customOptionsMenu.push({
-        name: "CMAutobuyer",
-        title: "Cookie Monster Autobuyer",
-        options: upgradeOptions,
-      });
+        }
+      };
     }
   };
 
@@ -258,6 +305,11 @@ var CMUpgradeAutobuyer = {};
     Game.Notify("アップグレード自動購入", "PP最短のアップグレードを自動的に購入します", [16, 5], 1);
     this.log("アップグレード自動購入を開始しました。");
     setTimeout(UpgradeAutobuyer.check, UpgradeAutobuyer.interval);
+
+    // 現在オプション画面を表示中なら更新
+    if (Game.onMenu === "prefs") {
+      Game.UpdateMenu();
+    }
   };
 
   // 自動購入を停止
@@ -275,6 +327,11 @@ var CMUpgradeAutobuyer = {};
     }
     Game.Notify("アップグレード自動購入", "自動購入を停止しました", [17, 5], 1);
     this.log("アップグレード自動購入を停止しました。");
+
+    // 現在オプション画面を表示中なら更新
+    if (Game.onMenu === "prefs") {
+      Game.UpdateMenu();
+    }
   };
 
   // 自動購入の状態を切り替え
@@ -299,6 +356,9 @@ var CMUpgradeAutobuyer = {};
     UpgradeAutobuyer.excludeSwitches = !!Game.prefs.UpgradeExcludeSwitches;
     UpgradeAutobuyer.excludeResearch = !!Game.prefs.UpgradeExcludeResearch;
     UpgradeAutobuyer.excludeCovenants = !!Game.prefs.UpgradeExcludeCovenants;
+
+    // メニューを更新
+    Game.UpdateMenu();
   };
 
   // 初期化時のメッセージ
