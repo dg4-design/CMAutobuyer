@@ -306,4 +306,28 @@ const CMUpgradeAutobuyer = CMUpgradeAutobuyer || {};
 
   // 初期化を実行
   setTimeout(UpgradeAutobuyer.init, 1000);
+
+  // スクリプトの最後に追加
+  if (typeof Game !== "undefined" && Game.ready) {
+    // ゲームが読み込まれている場合は直接初期化
+    CMUpgradeAutobuyer.init();
+  } else {
+    // ゲームのロードを待つ
+    const loadHook = setInterval(function () {
+      if (typeof Game !== "undefined" && Game.ready) {
+        clearInterval(loadHook);
+        CMUpgradeAutobuyer.init();
+      }
+    }, 1000);
+  }
+
+  // モッドAPIのフック追加
+  if (typeof Game !== "undefined") {
+    Game.registerMod("CMUpgradeAutobuyer", {
+      init: function () {
+        CMUpgradeAutobuyer.init();
+        return true;
+      },
+    });
+  }
 })(CMUpgradeAutobuyer);
