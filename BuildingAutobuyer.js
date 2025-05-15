@@ -234,4 +234,28 @@ const CMBuildingAutobuyer = CMBuildingAutobuyer || {};
 
   // 初期化を実行
   setTimeout(BuildingAutobuyer.init, 1000);
+
+  // スクリプトの最後に追加
+  if (typeof Game !== "undefined" && Game.ready) {
+    // ゲームが読み込まれている場合は直接初期化
+    CMBuildingAutobuyer.init();
+  } else {
+    // ゲームのロードを待つ
+    const loadHook = setInterval(function () {
+      if (typeof Game !== "undefined" && Game.ready) {
+        clearInterval(loadHook);
+        CMBuildingAutobuyer.init();
+      }
+    }, 1000);
+  }
+
+  // モッドAPIのフック追加
+  if (typeof Game !== "undefined") {
+    Game.registerMod("CMBuildingAutobuyer", {
+      init: function () {
+        CMBuildingAutobuyer.init();
+        return true;
+      },
+    });
+  }
 })(CMBuildingAutobuyer);
