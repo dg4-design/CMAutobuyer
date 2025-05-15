@@ -280,23 +280,36 @@ var CMBuildingAutobuyer = {};
         return false;
       }
 
+      // 現在選択されている建物とモードが正しく反映されるよう設定
       const oldBuyMode = Game.buyMode;
       const oldBuyBulk = Game.buyBulk;
 
+      // 購入モードを設定（1=建物購入モード）
       Game.buyMode = 1;
+      // 一括購入数を設定
       Game.buyBulk = BuildingAutobuyer.targetBuilding.bulkAmount;
-      Game.CalculateGains(); // bulkPriceが更新されるようにする
+      // 設定を反映させる
+      Game.CalculateGains();
+
+      // 正確な購入価格を取得
+      const bulkPrice = building.getSumPrice(Game.buyBulk);
 
       // 現在の購入モードに必要な数量を確保するまで購入しない
-      if (Game.cookies >= building.bulkPrice) {
-        // 正しい購入方法で購入
-        building.buy(BuildingAutobuyer.targetBuilding.bulkAmount);
+      if (Game.cookies >= bulkPrice) {
+        // 購入前にもう一度モードを確認
+        Game.buyMode = 1;
+        Game.buyBulk = BuildingAutobuyer.targetBuilding.bulkAmount;
+
+        // 購入実行
+        building.buy();
+
         BuildingAutobuyer.log(
-          `購入: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (PP: ${BuildingAutobuyer.targetBuilding.pp.toFixed(
+          `購入成功: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (PP: ${BuildingAutobuyer.targetBuilding.pp.toFixed(
             2
-          )}, 価格: ${building.bulkPrice.toLocaleString()})`
+          )}, 価格: ${bulkPrice.toLocaleString()})`
         );
 
+        // 購入後に元の設定に戻す
         Game.buyMode = oldBuyMode;
         Game.buyBulk = oldBuyBulk;
         Game.CalculateGains();
@@ -306,12 +319,14 @@ var CMBuildingAutobuyer = {};
         return true;
       }
 
-      // まだ購入できないので待機
+      // まだ購入できないので待機（設定を元に戻す）
       Game.buyMode = oldBuyMode;
       Game.buyBulk = oldBuyBulk;
       Game.CalculateGains();
+
+      // 価格が足りない場合は待機メッセージ
       BuildingAutobuyer.log(
-        `待機中: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`
+        `待機中: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (必要: ${bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`
       );
       return false;
     }
@@ -326,20 +341,32 @@ var CMBuildingAutobuyer = {};
       return false;
     }
 
+    // 現在選択されている建物とモードが正しく反映されるよう設定
     const oldBuyMode = Game.buyMode;
     const oldBuyBulk = Game.buyBulk;
 
-    // 常に選択された量で購入するように設定
+    // 購入モードを設定（1=建物購入モード）
     Game.buyMode = 1;
+    // 一括購入数を設定
     Game.buyBulk = best.bulkAmount;
-    Game.CalculateGains(); // bulkPriceが更新されるようにする
+    // 設定を反映させる
+    Game.CalculateGains();
+
+    // 正確な購入価格を取得
+    const bulkPrice = building.getSumPrice(Game.buyBulk);
 
     // 現在選択されている購入量で購入できるかチェック
-    if (Game.cookies >= building.bulkPrice) {
-      // 選択された数量でのみ購入
-      building.buy();
-      BuildingAutobuyer.log(`購入: ${best.name} x${best.bulkAmount} (PP: ${best.pp.toFixed(2)}, 価格: ${building.bulkPrice.toLocaleString()})`);
+    if (Game.cookies >= bulkPrice) {
+      // 購入前にもう一度モードを確認
+      Game.buyMode = 1;
+      Game.buyBulk = best.bulkAmount;
 
+      // 購入実行
+      building.buy();
+
+      BuildingAutobuyer.log(`購入成功: ${best.name} x${best.bulkAmount} (PP: ${best.pp.toFixed(2)}, 価格: ${bulkPrice.toLocaleString()})`);
+
+      // 購入後に元の設定に戻す
       Game.buyMode = oldBuyMode;
       Game.buyBulk = oldBuyBulk;
       Game.CalculateGains();
@@ -349,10 +376,12 @@ var CMBuildingAutobuyer = {};
     // 購入できない場合は、このターゲットを保存して次回も試す
     BuildingAutobuyer.targetBuilding = best;
 
+    // 設定を元に戻す
     Game.buyMode = oldBuyMode;
     Game.buyBulk = oldBuyBulk;
     Game.CalculateGains();
-    BuildingAutobuyer.log(`待機対象を設定: ${best.name} x${best.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`);
+
+    BuildingAutobuyer.log(`待機対象を設定: ${best.name} x${best.bulkAmount} (必要: ${bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`);
     return false;
   };
 
