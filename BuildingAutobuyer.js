@@ -25,6 +25,85 @@ var CMBuildingAutobuyer = {};
     }
   };
 
+  // Cookie Monster設定に統合する
+  BuildingAutobuyer.injectSettings = function () {
+    if (!CM || !CM.Disp || !CM.Disp.UpdateSettings) {
+      console.log("[CM-BA] Cookie Monsterが見つかりません。設定を統合できません。");
+      return;
+    }
+
+    // Miscellaneousグループに追加
+    this.log("設定をMiscellaneousグループに追加します");
+
+    // メインの自動購入設定
+    CM.ConfigData[this.settingName] = {
+      type: "bool",
+      label: ["建物自動購入 オフ", "建物自動購入 オン"],
+      desc: "建物の自動購入を有効化（PP最短を自動購入）",
+      group: "Miscellaneous", // 既存のグループを使用
+      toggle: true,
+      default: 0,
+    };
+
+    // 購入数量の設定
+    CM.ConfigData[this.amountSettingName] = {
+      type: "bool",
+      label: ["最適な量", "1個ずつ", "10個ずつ", "100個ずつ"],
+      desc: "自動購入する際の購入数量を設定",
+      group: "Miscellaneous", // 既存のグループを使用
+      toggle: false,
+      default: 0,
+    };
+
+    // デフォルト値を設定
+    if (!CM.Config[this.settingName]) {
+      CM.Config[this.settingName] = 0;
+    }
+
+    if (!CM.Config[this.amountSettingName]) {
+      CM.Config[this.amountSettingName] = 0;
+    }
+
+    // 設定変更時のイベントハンドラを追加
+    CM.Callback[this.settingName] = function () {
+      if (CM.Config[BuildingAutobuyer.settingName] === 1) {
+        BuildingAutobuyer.start();
+      } else {
+        BuildingAutobuyer.stop();
+      }
+    };
+
+    // 購入数量変更時のイベントハンドラ
+    CM.Callback[this.amountSettingName] = function () {
+      BuildingAutobuyer.buyAmount = CM.Config[BuildingAutobuyer.amountSettingName];
+      BuildingAutobuyer.log(`購入数量を変更しました: ${CM.ConfigData[BuildingAutobuyer.amountSettingName].label[BuildingAutobuyer.buyAmount]}`);
+    };
+
+    // 従来の設定メニュー用の設定追加（互換性のため）
+    if (typeof CM.Disp.AddMenuPref === "function") {
+      try {
+        CM.Disp.AddMenuPref("自動購入", this.settingName);
+        CM.Disp.AddMenuPref("自動購入", this.amountSettingName);
+      } catch (e) {
+        this.log("従来の設定メニュー追加に失敗しました: " + e);
+      }
+    }
+
+    // 初期設定を反映
+    BuildingAutobuyer.buyAmount = CM.Config[BuildingAutobuyer.amountSettingName];
+
+    // Cookie Monster設定を更新
+    if (CM.Disp && CM.Disp.UpdateMenu) {
+      try {
+        CM.Disp.UpdateMenu();
+      } catch (e) {
+        this.log("設定メニュー更新に失敗しました: " + e);
+      }
+    }
+
+    console.log("[CM-BA] Cookie Monster設定に統合しました");
+  };
+
   // 購入数量を設定するメソッド
   BuildingAutobuyer.setBuyAmount = function (amount) {
     // 有効な値かチェック
@@ -184,75 +263,6 @@ var CMBuildingAutobuyer = {};
   // 自動購入の状態を切り替え
   BuildingAutobuyer.toggle = function () {
     BuildingAutobuyer.isRunning ? BuildingAutobuyer.stop() : BuildingAutobuyer.start();
-  };
-
-  // Cookie Monster設定カテゴリに「自動購入」カテゴリを追加
-  BuildingAutobuyer.addAutobuyerCategory = function () {
-    if (typeof CM !== "undefined" && CM.tn) {
-      // 「自動購入」カテゴリを追加
-      CM.tn.Autobuyer = "自動購入";
-      this.log("自動購入カテゴリを追加しました");
-    }
-  };
-
-  // Cookie Monster設定に統合する
-  BuildingAutobuyer.injectSettings = function () {
-    if (!CM || !CM.Disp || !CM.Disp.UpdateSettings) {
-      console.log("[CM-BA] Cookie Monsterが見つかりません。設定を統合できません。");
-      return;
-    }
-
-    // 自動購入カテゴリを追加
-    this.addAutobuyerCategory();
-
-    // 設定オブジェクトを作成
-    CM.ConfigData[this.settingName] = {
-      type: "bool",
-      label: ["BuildingAutobuyer オフ", "BuildingAutobuyer オン"],
-      desc: "建物の自動購入を有効化（PP最短を自動購入）",
-      group: "Autobuyer",
-      toggle: true,
-      default: 0,
-    };
-
-    // 購入数量の設定を追加
-    CM.ConfigData[this.amountSettingName] = {
-      type: "bool",
-      label: ["最適な量", "1個ずつ", "10個ずつ", "100個ずつ"],
-      desc: "自動購入する際の購入数量を設定",
-      group: "Autobuyer",
-      toggle: false,
-      default: 0,
-    };
-
-    // デフォルト値を設定
-    if (!CM.Config[this.settingName]) {
-      CM.Config[this.settingName] = 0;
-    }
-
-    if (!CM.Config[this.amountSettingName]) {
-      CM.Config[this.amountSettingName] = 0;
-    }
-
-    // 設定変更時のイベントハンドラを追加
-    CM.Callback[this.settingName] = function () {
-      if (CM.Config[BuildingAutobuyer.settingName] === 1) {
-        BuildingAutobuyer.start();
-      } else {
-        BuildingAutobuyer.stop();
-      }
-    };
-
-    // 購入数量変更時のイベントハンドラ
-    CM.Callback[this.amountSettingName] = function () {
-      BuildingAutobuyer.buyAmount = CM.Config[BuildingAutobuyer.amountSettingName];
-      BuildingAutobuyer.log(`購入数量を変更しました: ${CM.ConfigData[BuildingAutobuyer.amountSettingName].label[BuildingAutobuyer.buyAmount]}`);
-    };
-
-    // 初期設定を反映
-    BuildingAutobuyer.buyAmount = CM.Config[BuildingAutobuyer.amountSettingName];
-
-    console.log("[CM-BA] Cookie Monster設定に統合しました");
   };
 
   // Cookie Monsterがロード済みか確認して設定を統合

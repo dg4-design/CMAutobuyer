@@ -29,6 +29,117 @@ var CMUpgradeAutobuyer = {};
     }
   };
 
+  // Cookie Monster設定に統合する
+  UpgradeAutobuyer.injectSettings = function () {
+    if (!CM || !CM.Disp || !CM.Disp.UpdateSettings) {
+      console.log("[CM-UA] Cookie Monsterが見つかりません。設定を統合できません。");
+      return;
+    }
+
+    // Miscellaneousグループに追加
+    this.log("設定をMiscellaneousグループに追加します");
+
+    // メイン設定オブジェクトを作成
+    CM.ConfigData[this.settingName] = {
+      type: "bool",
+      label: ["アップグレード自動購入 オフ", "アップグレード自動購入 オン"],
+      desc: "アップグレードの自動購入を有効化（PP最短を自動購入）",
+      group: "Miscellaneous", // 既存のグループを使用
+      toggle: true,
+      default: 0,
+    };
+
+    // 除外設定を追加
+    CM.ConfigData[this.excludeSettingPrefix + "Switches"] = {
+      type: "bool",
+      label: ["スイッチ除外 オフ", "スイッチ除外 オン"],
+      desc: "Golden/Shimmering Switch などのスイッチ系アップグレードを自動購入から除外",
+      group: "Miscellaneous", // 既存のグループを使用
+      toggle: true,
+      default: 1,
+    };
+
+    CM.ConfigData[this.excludeSettingPrefix + "Research"] = {
+      type: "bool",
+      label: ["研究除外 オフ", "研究除外 オン"],
+      desc: "研究アップグレード（負の効果を持つ可能性あり）を自動購入から除外",
+      group: "Miscellaneous", // 既存のグループを使用
+      toggle: true,
+      default: 0,
+    };
+
+    CM.ConfigData[this.excludeSettingPrefix + "Covenants"] = {
+      type: "bool",
+      label: ["契約除外 オフ", "契約除外 オン"],
+      desc: "Elder Covenant などの契約系アップグレードを自動購入から除外",
+      group: "Miscellaneous", // 既存のグループを使用
+      toggle: true,
+      default: 1,
+    };
+
+    // デフォルト値を設定
+    if (CM.Config[this.settingName] === undefined) {
+      CM.Config[this.settingName] = 0;
+    }
+    if (CM.Config[this.excludeSettingPrefix + "Switches"] === undefined) {
+      CM.Config[this.excludeSettingPrefix + "Switches"] = 1;
+    }
+    if (CM.Config[this.excludeSettingPrefix + "Research"] === undefined) {
+      CM.Config[this.excludeSettingPrefix + "Research"] = 0;
+    }
+    if (CM.Config[this.excludeSettingPrefix + "Covenants"] === undefined) {
+      CM.Config[this.excludeSettingPrefix + "Covenants"] = 1;
+    }
+
+    // 設定変更時のイベントハンドラを追加
+    CM.Callback[this.settingName] = function () {
+      if (CM.Config[UpgradeAutobuyer.settingName] === 1) {
+        UpgradeAutobuyer.start();
+      } else {
+        UpgradeAutobuyer.stop();
+      }
+    };
+
+    // 除外設定の変更時のイベントハンドラ
+    CM.Callback[this.excludeSettingPrefix + "Switches"] = function () {
+      UpgradeAutobuyer.excludeSwitches = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Switches"] === 1;
+    };
+    CM.Callback[this.excludeSettingPrefix + "Research"] = function () {
+      UpgradeAutobuyer.excludeResearch = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Research"] === 1;
+    };
+    CM.Callback[this.excludeSettingPrefix + "Covenants"] = function () {
+      UpgradeAutobuyer.excludeCovenants = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Covenants"] === 1;
+    };
+
+    // 従来の設定メニュー用の設定追加（互換性のため）
+    if (typeof CM.Disp.AddMenuPref === "function") {
+      try {
+        CM.Disp.AddMenuPref("自動購入", this.settingName);
+        CM.Disp.AddMenuPref("自動購入", this.excludeSettingPrefix + "Switches");
+        CM.Disp.AddMenuPref("自動購入", this.excludeSettingPrefix + "Research");
+        CM.Disp.AddMenuPref("自動購入", this.excludeSettingPrefix + "Covenants");
+      } catch (e) {
+        this.log("従来の設定メニュー追加に失敗しました: " + e);
+      }
+    }
+
+    // 現在の設定を適用
+    UpgradeAutobuyer.excludeSwitches = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Switches"] === 1;
+    UpgradeAutobuyer.excludeResearch = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Research"] === 1;
+    UpgradeAutobuyer.excludeCovenants = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Covenants"] === 1;
+
+    // Cookie Monster設定を更新
+    if (CM.Disp && CM.Disp.UpdateMenu) {
+      try {
+        CM.Disp.UpdateMenu();
+      } catch (e) {
+        this.log("設定メニュー更新に失敗しました: " + e);
+      }
+    }
+
+    console.log("[CM-UA] Cookie Monster設定に統合しました");
+  };
+
   // アップグレードを除外すべきかチェック
   UpgradeAutobuyer.shouldExclude = function (upgrade) {
     if (!upgrade) return true;
@@ -193,105 +304,6 @@ var CMUpgradeAutobuyer = {};
   // 自動購入の状態を切り替え
   UpgradeAutobuyer.toggle = function () {
     UpgradeAutobuyer.isRunning ? UpgradeAutobuyer.stop() : UpgradeAutobuyer.start();
-  };
-
-  // Cookie Monster設定カテゴリに「自動購入」カテゴリを追加
-  UpgradeAutobuyer.addAutobuyerCategory = function () {
-    if (typeof CM !== "undefined" && CM.tn) {
-      // 「自動購入」カテゴリを追加
-      CM.tn.Autobuyer = "自動購入";
-      this.log("自動購入カテゴリを追加しました");
-    }
-  };
-
-  // Cookie Monster設定に統合する
-  UpgradeAutobuyer.injectSettings = function () {
-    if (!CM || !CM.Disp || !CM.Disp.UpdateSettings) {
-      console.log("[CM-UA] Cookie Monsterが見つかりません。設定を統合できません。");
-      return;
-    }
-
-    // 自動購入カテゴリを追加
-    this.addAutobuyerCategory();
-
-    // メイン設定オブジェクトを作成
-    CM.ConfigData[this.settingName] = {
-      type: "bool",
-      label: ["UpgradeAutobuyer オフ", "UpgradeAutobuyer オン"],
-      desc: "アップグレードの自動購入を有効化（PP最短を自動購入）",
-      group: "Autobuyer",
-      toggle: true,
-      default: 0,
-    };
-
-    // 除外設定を追加
-    CM.ConfigData[this.excludeSettingPrefix + "Switches"] = {
-      type: "bool",
-      label: ["スイッチ除外 オフ", "スイッチ除外 オン"],
-      desc: "Golden/Shimmering Switch などのスイッチ系アップグレードを自動購入から除外",
-      group: "Autobuyer",
-      toggle: true,
-      default: 1,
-    };
-
-    CM.ConfigData[this.excludeSettingPrefix + "Research"] = {
-      type: "bool",
-      label: ["研究除外 オフ", "研究除外 オン"],
-      desc: "研究アップグレード（負の効果を持つ可能性あり）を自動購入から除外",
-      group: "Autobuyer",
-      toggle: true,
-      default: 0,
-    };
-
-    CM.ConfigData[this.excludeSettingPrefix + "Covenants"] = {
-      type: "bool",
-      label: ["契約除外 オフ", "契約除外 オン"],
-      desc: "Elder Covenant などの契約系アップグレードを自動購入から除外",
-      group: "Autobuyer",
-      toggle: true,
-      default: 1,
-    };
-
-    // デフォルト値を設定
-    if (CM.Config[this.settingName] === undefined) {
-      CM.Config[this.settingName] = 0;
-    }
-    if (CM.Config[this.excludeSettingPrefix + "Switches"] === undefined) {
-      CM.Config[this.excludeSettingPrefix + "Switches"] = 1;
-    }
-    if (CM.Config[this.excludeSettingPrefix + "Research"] === undefined) {
-      CM.Config[this.excludeSettingPrefix + "Research"] = 0;
-    }
-    if (CM.Config[this.excludeSettingPrefix + "Covenants"] === undefined) {
-      CM.Config[this.excludeSettingPrefix + "Covenants"] = 1;
-    }
-
-    // 設定変更時のイベントハンドラを追加
-    CM.Callback[this.settingName] = function () {
-      if (CM.Config[UpgradeAutobuyer.settingName] === 1) {
-        UpgradeAutobuyer.start();
-      } else {
-        UpgradeAutobuyer.stop();
-      }
-    };
-
-    // 除外設定の変更時のイベントハンドラ
-    CM.Callback[this.excludeSettingPrefix + "Switches"] = function () {
-      UpgradeAutobuyer.excludeSwitches = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Switches"] === 1;
-    };
-    CM.Callback[this.excludeSettingPrefix + "Research"] = function () {
-      UpgradeAutobuyer.excludeResearch = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Research"] === 1;
-    };
-    CM.Callback[this.excludeSettingPrefix + "Covenants"] = function () {
-      UpgradeAutobuyer.excludeCovenants = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Covenants"] === 1;
-    };
-
-    // 現在の設定を適用
-    UpgradeAutobuyer.excludeSwitches = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Switches"] === 1;
-    UpgradeAutobuyer.excludeResearch = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Research"] === 1;
-    UpgradeAutobuyer.excludeCovenants = CM.Config[UpgradeAutobuyer.excludeSettingPrefix + "Covenants"] === 1;
-
-    console.log("[CM-UA] Cookie Monster設定に統合しました");
   };
 
   // Cookie Monsterがロード済みか確認して設定を統合
