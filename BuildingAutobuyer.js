@@ -21,6 +21,7 @@ var CMBuildingAutobuyer = {};
     enabled: false, // 自動購入が有効か
     buyAmount: 0, // 購入数量 (0:最適, 1:単一, 2:10個, 3:100個)
   };
+  BuildingAutobuyer.targetBuilding = null; // 購入待ちの建物を保存
 
   // デバッグログ
   BuildingAutobuyer.log = function (message) {
@@ -200,6 +201,8 @@ var CMBuildingAutobuyer = {};
 
     // 購入数量を設定
     BuildingAutobuyer.buyAmount = amount;
+    // 新しい購入モードでは、以前のターゲット建物をクリア
+    BuildingAutobuyer.targetBuilding = null;
 
     const amountTexts = ["最適な量", "単一購入", "10個購入", "100個購入"];
     Game.Notify("建物自動購入", `購入数量を「${amountTexts[amount]}」に設定しました`, [16, 5], 3);
@@ -268,6 +271,50 @@ var CMBuildingAutobuyer = {};
 
   // 購入を試みる
   BuildingAutobuyer.tryPurchase = function () {
+    // 保存済みのターゲット建物があるか確認
+    if (BuildingAutobuyer.targetBuilding) {
+      const building = Game.Objects[BuildingAutobuyer.targetBuilding.name];
+      if (!building) {
+        this.log(`保存された建物 "${BuildingAutobuyer.targetBuilding.name}" が見つかりません。`);
+        BuildingAutobuyer.targetBuilding = null;
+        return false;
+      }
+
+      const oldBuyMode = Game.buyMode;
+      const oldBuyBulk = Game.buyBulk;
+
+      Game.buyMode = 1;
+      Game.buyBulk = BuildingAutobuyer.targetBuilding.bulkAmount;
+      Game.CalculateGains(); // bulkPriceが更新されるようにする
+
+      if (Game.cookies >= building.bulkPrice) {
+        building.buy(); // Game.buyBulk に基づいて購入される
+        this.log(
+          `購入: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (PP: ${BuildingAutobuyer.targetBuilding.pp.toFixed(
+            2
+          )}, 価格: ${building.bulkPrice.toLocaleString()})`
+        );
+
+        Game.buyMode = oldBuyMode;
+        Game.buyBulk = oldBuyBulk;
+        Game.CalculateGains();
+
+        // 購入が成功したらターゲットをクリア
+        BuildingAutobuyer.targetBuilding = null;
+        return true;
+      }
+
+      // まだ購入できないので待機
+      Game.buyMode = oldBuyMode;
+      Game.buyBulk = oldBuyBulk;
+      Game.CalculateGains();
+      this.log(
+        `待機中: ${BuildingAutobuyer.targetBuilding.name} x${BuildingAutobuyer.targetBuilding.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`
+      );
+      return false;
+    }
+
+    // 新しいベスト購入を見つける
     const best = this.findBestPurchase();
     if (!best) return false;
 
@@ -294,10 +341,13 @@ var CMBuildingAutobuyer = {};
       return true;
     }
 
+    // 購入できない場合は、このターゲットを保存して次回も試す
+    BuildingAutobuyer.targetBuilding = best;
+
     Game.buyMode = oldBuyMode;
     Game.buyBulk = oldBuyBulk;
-    Game.CalculateGains(); // 購入しなかった場合も元に戻す
-    // this.log(`待機中: ${best.name} x${best.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`);
+    Game.CalculateGains();
+    this.log(`待機対象を設定: ${best.name} x${best.bulkAmount} (必要: ${building.bulkPrice.toLocaleString()}, 現在: ${Game.cookies.toLocaleString()})`);
     return false;
   };
 
@@ -334,6 +384,8 @@ var CMBuildingAutobuyer = {};
       clearInterval(BuildingAutobuyer.timerId);
       BuildingAutobuyer.timerId = null;
     }
+    // ターゲット建物をクリア
+    BuildingAutobuyer.targetBuilding = null;
     Game.Notify("建物自動購入", "自動購入を停止しました", [17, 5], 1);
     this.log("建物自動購入を停止しました。");
   };
