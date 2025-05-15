@@ -8,16 +8,16 @@ Cookie Clicker 用の Cookie Monster Mod 向け自動購入 Mod です。施設�
 
 - Payback Period（投資回収期間）が最短の施設を自動的に購入
 - 購入数量を選択可能（最適な量、1 個ずつ、10 個ずつ、100 個ずつ）
-- Cookie Monster 設定画面からワンクリックで有効化/無効化
+- ゲーム内オプション画面から設定
 
 ### アップグレード自動購入 (UpgradeAutobuyer.js)
 
 - Payback Period（投資回収期間）が最短のアップグレードを自動的に購入
 - 特定のアップグレードタイプを除外可能
   - スイッチ系（Golden Switch/Shimmering Veil など）
-  - 研究アップグレード（負の効果を持つ可能性あり）
+  - 研究アップグレード（グランマポカリプス関連）
   - 契約系（Elder Covenant など）
-- Cookie Monster 設定画面から各種設定が可能
+- ゲーム内オプション画面から設定
 
 ## 前提条件
 
@@ -52,18 +52,51 @@ Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
 Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/UpgradeAutobuyer.js");
 ```
 
+<details>
+
+<summary><h3>Cookie Monster と同時に読み込む</h3></summary>
+
+#### 施設自動購入
+
+```javascript
+Game.LoadMod("https://cookiemonsterteam.github.io/CookieMonster/dist/CookieMonster.js");
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
+```
+
+#### アップグレード自動購入
+
+```javascript
+Game.LoadMod("https://cookiemonsterteam.github.io/CookieMonster/dist/CookieMonster.js");
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/UpgradeAutobuyer.js");
+```
+
+#### 両方
+
+```javascript
+Game.LoadMod("https://cookiemonsterteam.github.io/CookieMonster/dist/CookieMonster.js");
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/UpgradeAutobuyer.js");
+```
+
+</details>
+
 ## 使い方
 
-### 設定
+### 設定メニュー
 
-Cookie Monster のオプション画面（画面左上の CM アイコン → オプション）から以下の設定が可能です：
+ゲーム内設定メニュー（Options）から以下を設定：
 
-- **BuildingAutobuyer**: 施設自動購入のオン/オフ
+#### 施設自動購入設定
+
+- **自動購入**: 施設自動購入のオン/オフ
 - **購入数量**: 自動購入する施設の数量（最適な量/1 個ずつ/10 個ずつ/100 個ずつ）
-- **UpgradeAutobuyer**: アップグレード自動購入のオン/オフ
-- **スイッチ除外**: スイッチ系アップグレード除外のオン/オフ
-- **研究除外**: 研究アップグレード除外のオン/オフ
-- **契約除外**: 契約系アップグレード除外のオン/オフ
+
+#### アップグレード自動購入設定
+
+- **自動購入**: アップグレード自動購入のオン/オフ
+- **スイッチ系除外**: Golden Switch や Shimmering Veil などのスイッチ系アップグレードを自動購入から除外
+- **研究除外**: グランマポカリプス関連の研究アップグレードを自動購入から除外
+- **契約系除外**: Elder Covenant などの契約系アップグレードを自動購入から除外
 
 ### コマンド
 
@@ -72,17 +105,18 @@ Cookie Monster のオプション画面（画面左上の CM アイコン → �
 - 開始: `CMBuildingAutobuyer.start()`
 - 停止: `CMBuildingAutobuyer.stop()`
 - 切替: `CMBuildingAutobuyer.toggle()`
+- 購入数量設定: `CMBuildingAutobuyer.setBuyAmount(amount)` (0:最適な量, 1:単一, 2:10 個, 3:100 個)
+- 現在の設定確認: `CMBuildingAutobuyer.getBuyAmount()`
 
 #### アップグレード自動購入
 
 - 開始: `CMUpgradeAutobuyer.start()`
 - 停止: `CMUpgradeAutobuyer.stop()`
 - 切替: `CMUpgradeAutobuyer.toggle()`
-- 診断: `CMUpgradeAutobuyer.listAllUpgrades()`
 
 ### 設定の保存
 
-このスクリプトの設定は Cookie Monster の設定システムに統合されているため、Cookie Monster の設定と一緒に自動的に保存・読み込みされます。ゲームをセーブすると次回ロード時にも設定が維持されます。
+このスクリプトの設定は Cookie Monster のフレームワークに統合されているため、ゲームをセーブすると次回ロード時にも設定が維持されます。
 
 ## 仕組み
 
