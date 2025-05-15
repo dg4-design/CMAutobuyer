@@ -36,13 +36,13 @@ Cookie Clicker 用の Cookie Monster 拡張機能向け自動購入スクリプ�
 #### 建物自動購入
 
 ```javascript
-Game.LoadMod("https://raw.githubusercontent.com/dg4-design/CMAutobuyer/refs/heads/main/BuildingAutobuyer.js");
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
 ```
 
 #### アップグレード自動購入
 
 ```javascript
-Game.LoadMod("https://raw.githubusercontent.com/dg4-design/CMAutobuyer/refs/heads/main/UpgradeAutobuyer.js");
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/UpgradeAutobuyer.js");
 ```
 
 ### 方法 2: スクリプトタグによる読み込み
@@ -50,7 +50,7 @@ Game.LoadMod("https://raw.githubusercontent.com/dg4-design/CMAutobuyer/refs/head
 ```javascript
 function(){
   var s = document.createElement('script');
-  s.setAttribute("src", "https://raw.githubusercontent.com/dg4-design/CMAutobuyer/refs/heads/main/BuildingAutobuyer.js");
+  s.setAttribute("src", "https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
   document.head.appendChild(s);
 }();
 ``` -->
