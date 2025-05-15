@@ -25,6 +25,39 @@ var CMBuildingAutobuyer = {};
     }
   };
 
+  // 購入数量を設定するメソッド
+  BuildingAutobuyer.setBuyAmount = function (amount) {
+    // 有効な値かチェック
+    if (typeof amount !== "number" || amount < 0 || amount > 3 || !Number.isInteger(amount)) {
+      Game.Notify("建物自動購入", "無効な購入数量です。0:最適な量, 1:単一, 2:10個, 3:100個から選択してください", [16, 5], 5);
+      return false;
+    }
+
+    // 購入数量を設定
+    BuildingAutobuyer.buyAmount = amount;
+
+    // CM設定も更新
+    if (CM && CM.Config) {
+      CM.Config[BuildingAutobuyer.amountSettingName] = amount;
+      if (CM.Disp && CM.Disp.UpdateSettings) {
+        CM.Disp.UpdateSettings();
+      }
+    }
+
+    const amountTexts = ["最適な量", "単一購入", "10個購入", "100個購入"];
+    Game.Notify("建物自動購入", `購入数量を「${amountTexts[amount]}」に設定しました`, [16, 5], 3);
+    BuildingAutobuyer.log(`購入数量を変更しました: ${amountTexts[amount]}`);
+    return true;
+  };
+
+  // 現在の購入数量を取得するメソッド
+  BuildingAutobuyer.getBuyAmount = function () {
+    const amountTexts = ["最適な量", "単一購入", "10個購入", "100個購入"];
+    const currentAmount = BuildingAutobuyer.buyAmount;
+    Game.Notify("建物自動購入", `現在の購入数量: 「${amountTexts[currentAmount]}」`, [16, 5], 3);
+    return currentAmount;
+  };
+
   // 最適な購入を探す
   BuildingAutobuyer.findBestPurchase = function () {
     if (!window.CookieMonsterData || !Game) {
@@ -153,6 +186,15 @@ var CMBuildingAutobuyer = {};
     BuildingAutobuyer.isRunning ? BuildingAutobuyer.stop() : BuildingAutobuyer.start();
   };
 
+  // Cookie Monster設定カテゴリに「自動購入」カテゴリを追加
+  BuildingAutobuyer.addAutobuyerCategory = function () {
+    if (typeof CM !== "undefined" && CM.tn) {
+      // 「自動購入」カテゴリを追加
+      CM.tn.Autobuyer = "自動購入";
+      this.log("自動購入カテゴリを追加しました");
+    }
+  };
+
   // Cookie Monster設定に統合する
   BuildingAutobuyer.injectSettings = function () {
     if (!CM || !CM.Disp || !CM.Disp.UpdateSettings) {
@@ -160,20 +202,25 @@ var CMBuildingAutobuyer = {};
       return;
     }
 
+    // 自動購入カテゴリを追加
+    this.addAutobuyerCategory();
+
     // 設定オブジェクトを作成
     CM.ConfigData[this.settingName] = {
-      label: "BuildingAutobuyer",
+      type: "bool",
+      label: ["BuildingAutobuyer オフ", "BuildingAutobuyer オン"],
       desc: "建物の自動購入を有効化（PP最短を自動購入）",
-      settings: ["オフ", "オン"],
+      group: "Autobuyer",
       toggle: true,
       default: 0,
     };
 
     // 購入数量の設定を追加
     CM.ConfigData[this.amountSettingName] = {
-      label: "購入数量",
+      type: "bool",
+      label: ["最適な量", "1個ずつ", "10個ずつ", "100個ずつ"],
       desc: "自動購入する際の購入数量を設定",
-      settings: ["最適な量", "1個ずつ", "10個ずつ", "100個ずつ"],
+      group: "Autobuyer",
       toggle: false,
       default: 0,
     };
@@ -199,14 +246,8 @@ var CMBuildingAutobuyer = {};
     // 購入数量変更時のイベントハンドラ
     CM.Callback[this.amountSettingName] = function () {
       BuildingAutobuyer.buyAmount = CM.Config[BuildingAutobuyer.amountSettingName];
-      BuildingAutobuyer.log(`購入数量を変更しました: ${CM.ConfigData[BuildingAutobuyer.amountSettingName].settings[BuildingAutobuyer.buyAmount]}`);
+      BuildingAutobuyer.log(`購入数量を変更しました: ${CM.ConfigData[BuildingAutobuyer.amountSettingName].label[BuildingAutobuyer.buyAmount]}`);
     };
-
-    // 設定画面を更新するため
-    if (typeof CM.Disp.AddMenuPref === "function") {
-      CM.Disp.AddMenuPref("自動購入", this.settingName);
-      CM.Disp.AddMenuPref("自動購入", this.amountSettingName);
-    }
 
     // 初期設定を反映
     BuildingAutobuyer.buyAmount = CM.Config[BuildingAutobuyer.amountSettingName];
@@ -232,6 +273,8 @@ var CMBuildingAutobuyer = {};
   // 初期化時のメッセージ
   console.log("Cookie Monster - 建物自動購入 (CM-BuildingAutobuyer) が読み込まれました。");
   console.log("使用方法: CMBuildingAutobuyer.start() で開始、CMBuildingAutobuyer.stop() で停止");
+  console.log("購入数量設定: CMBuildingAutobuyer.setBuyAmount(数量) で変更（0:最適な量, 1:単一, 2:10個, 3:100個）");
+  console.log("購入数量確認: CMBuildingAutobuyer.getBuyAmount() で現在の設定を確認できます");
   Game.Notify("CM-BuildingAutobuyer", "建物自動購入スクリプトが読み込まれました", [4, 6], 5);
 
   // 初期化を実行
