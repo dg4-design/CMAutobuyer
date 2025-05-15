@@ -69,42 +69,27 @@ var CMUpgradeAutobuyer = {};
     const optionsMenu = l("menu");
     console.log("[UpgradeAutobuyer] optionsMenu:", optionsMenu);
 
-    const subMenu = UpgradeAutobuyer.targetMenuElement || l("preferenceTableBodies");
-    console.log("[UpgradeAutobuyer] subMenu:", subMenu);
+    if (!optionsMenu) {
+      console.error("[UpgradeAutobuyer] メニュー要素が見つかりません");
+      return;
+    }
+
+    // CookieClickerの設定セクションを特定
+    let subMenu = l("preferenceTableBodies");
+
+    // 通常の要素が見つからない場合、セクション要素を探す
+    if (!subMenu) {
+      console.log("[UpgradeAutobuyer] preferenceTableBodies not found, looking for .section");
+      const sections = optionsMenu.querySelectorAll(".section");
+      if (sections && sections.length > 0) {
+        subMenu = sections[0];
+        console.log("[UpgradeAutobuyer] Using first .section element instead");
+      }
+    }
 
     if (!subMenu) {
-      console.error("[UpgradeAutobuyer] Target menu element not found");
-
-      // メニュー要素を探す試み
-      console.log("メニュー要素を探索します:");
-      console.log("menu element:", document.getElementById("menu"));
-      const allDivs = Array.from(document.querySelectorAll("#menu div"));
-      console.log("menu children count:", allDivs.length);
-      console.log(
-        "menu structure:",
-        Array.from(document.querySelectorAll("#menu > *")).map((el) => el.id || el.className || el.tagName)
-      );
-
-      // 既存のオプションを検索して構造を特定
-      const optionElements = document.querySelectorAll("#menu .option");
-      if (optionElements.length > 0) {
-        console.log("Found existing options, checking parent structure");
-        const listingParent = optionElements[0].closest(".listing");
-        if (listingParent) {
-          console.log("Found listing parent:", listingParent.id || listingParent.className || listingParent.tagName);
-          const sectionParent = listingParent.parentNode;
-          console.log("Section parent:", sectionParent.id || sectionParent.className || sectionParent.tagName);
-
-          // セクションが追加されるべき場所を検出
-          UpgradeAutobuyer.targetMenuElement = sectionParent;
-          console.log("Set targetMenuElement for future use");
-
-          // 要素を取得してもう一度試行
-          return UpgradeAutobuyer.addOptionsMenu();
-        }
-      }
-
-      return; // メニューが見つからない場合は処理しない
+      console.error("[UpgradeAutobuyer] 設定を追加する要素が見つかりませんでした");
+      return;
     }
 
     console.log("[UpgradeAutobuyer] Menu elements found");
@@ -119,7 +104,7 @@ var CMUpgradeAutobuyer = {};
     // 新しいセクションを作成
     const newSection = document.createElement("div");
     newSection.id = "CMUpgradeAutobuyerOptions";
-    newSection.className = "block";
+    newSection.className = "subsection";
     newSection.style.padding = "0px";
     newSection.style.margin = "8px 4px";
 
@@ -216,7 +201,9 @@ var CMUpgradeAutobuyer = {};
     newSection.appendChild(optionsTable);
 
     // オプションメニューに追加
+    console.log("[UpgradeAutobuyer] Appending new section to menu");
     subMenu.appendChild(newSection);
+    console.log("[UpgradeAutobuyer] Section added successfully");
   };
 
   // 設定行を作成するヘルパー関数
@@ -710,6 +697,34 @@ var CMUpgradeAutobuyer = {};
     Game.registerMod("CMUpgradeAutobuyer", {
       init: function () {
         UpgradeAutobuyer.init();
+
+        // メニュー更新が確実に行われるように、Game.ShowMenuをオーバーライド
+        // (BuildingAutobuyerですでに設定されている場合は上書きしない)
+        if (!window.BuildingAutobuyer?.originalShowMenu && !UpgradeAutobuyer.originalShowMenu && Game.ShowMenu) {
+          UpgradeAutobuyer.originalShowMenu = Game.ShowMenu;
+
+          Game.ShowMenu = function (what) {
+            // 元の関数を呼び出す
+            UpgradeAutobuyer.originalShowMenu(what);
+
+            // オプションメニューが開かれた場合、設定を表示
+            if (what === "prefs") {
+              console.log("[UpgradeAutobuyer] Options menu opened, triggering addOptionsMenu");
+              // 一定の遅延を設けてメニュー要素が確実に存在するようにする
+              setTimeout(function () {
+                if (typeof UpgradeAutobuyer.addOptionsMenu === "function") {
+                  UpgradeAutobuyer.addOptionsMenu();
+                }
+
+                // BuildingAutobuyerも同時に更新
+                if (window.BuildingAutobuyer && typeof window.BuildingAutobuyer.addOptionsMenu === "function") {
+                  window.BuildingAutobuyer.addOptionsMenu();
+                }
+              }, 100);
+            }
+          };
+        }
+
         return true;
       },
     });

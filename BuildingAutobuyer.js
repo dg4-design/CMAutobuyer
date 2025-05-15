@@ -95,23 +95,27 @@ var CMBuildingAutobuyer = {};
     const optionsMenu = l("menu");
     console.log("[BuildingAutobuyer] optionsMenu:", optionsMenu);
 
-    const subMenu = l("preferenceTableBodies");
-    console.log("[BuildingAutobuyer] subMenu (preferenceTableBodies):", subMenu);
+    if (!optionsMenu) {
+      console.error("[BuildingAutobuyer] メニュー要素が見つかりません");
+      return;
+    }
+
+    // CookieClickerの設定セクションを特定
+    let subMenu = l("preferenceTableBodies");
+
+    // 通常の要素が見つからない場合、セクション要素を探す
+    if (!subMenu) {
+      console.log("[BuildingAutobuyer] preferenceTableBodies not found, looking for .section");
+      const sections = optionsMenu.querySelectorAll(".section");
+      if (sections && sections.length > 0) {
+        subMenu = sections[0];
+        console.log("[BuildingAutobuyer] Using first .section element instead");
+      }
+    }
 
     if (!subMenu) {
-      console.error("[BuildingAutobuyer] preferenceTableBodies not found");
-
-      // メニュー要素を探す試み
-      console.log("メニュー要素を探索します:");
-      console.log("menu element:", document.getElementById("menu"));
-      const allDivs = Array.from(document.querySelectorAll("#menu div"));
-      console.log("menu children count:", allDivs.length);
-      console.log(
-        "menu structure:",
-        Array.from(document.querySelectorAll("#menu > *")).map((el) => el.id || el.className || el.tagName)
-      );
-
-      return; // メニューが見つからない場合は処理しない
+      console.error("[BuildingAutobuyer] 設定を追加する要素が見つかりませんでした");
+      return;
     }
 
     console.log("[BuildingAutobuyer] Menu elements found");
@@ -126,7 +130,7 @@ var CMBuildingAutobuyer = {};
     // 新しいセクションを作成
     const newSection = document.createElement("div");
     newSection.id = "CMBuildingAutobuyerOptions";
-    newSection.className = "block";
+    newSection.className = "subsection";
     newSection.style.padding = "0px";
     newSection.style.margin = "8px 4px";
 
@@ -171,7 +175,7 @@ var CMBuildingAutobuyer = {};
     newSection.appendChild(optionsTable);
 
     // オプションメニューに追加
-    console.log("[BuildingAutobuyer] Appending new section to preferenceTableBodies");
+    console.log("[BuildingAutobuyer] Appending new section to menu");
     subMenu.appendChild(newSection);
     console.log("[BuildingAutobuyer] Section added successfully");
   };
@@ -760,6 +764,33 @@ var CMBuildingAutobuyer = {};
       init: function () {
         BuildingAutobuyer.log("Mod init called via Game.registerMod");
         BuildingAutobuyer.init();
+
+        // メニュー更新が確実に行われるように、Game.ShowMenuをオーバーライド
+        if (!BuildingAutobuyer.originalShowMenu && Game.ShowMenu) {
+          BuildingAutobuyer.originalShowMenu = Game.ShowMenu;
+
+          Game.ShowMenu = function (what) {
+            // 元の関数を呼び出す
+            BuildingAutobuyer.originalShowMenu(what);
+
+            // オプションメニューが開かれた場合、設定を表示
+            if (what === "prefs") {
+              console.log("[BuildingAutobuyer] Options menu opened, triggering addOptionsMenu");
+              // 一定の遅延を設けてメニュー要素が確実に存在するようにする
+              setTimeout(function () {
+                if (typeof BuildingAutobuyer.addOptionsMenu === "function") {
+                  BuildingAutobuyer.addOptionsMenu();
+                }
+
+                // UpgradeAutobuyerも同時に更新
+                if (window.UpgradeAutobuyer && typeof window.UpgradeAutobuyer.addOptionsMenu === "function") {
+                  window.UpgradeAutobuyer.addOptionsMenu();
+                }
+              }, 100);
+            }
+          };
+        }
+
         return true;
       },
     });
