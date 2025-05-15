@@ -13,7 +13,7 @@ var CMBuildingAutobuyer = {};
   BuildingAutobuyer.isRunning = false;
   BuildingAutobuyer.interval = 100; // 0.1秒ごとにチェック
   BuildingAutobuyer.timerId = null;
-  BuildingAutobuyer.debug = false;
+  BuildingAutobuyer.debug = true; // デバッグモード有効化
   BuildingAutobuyer.settingName = "cmBuildingAutobuyer"; // 設定名
   BuildingAutobuyer.amountSettingName = "cmBuildingAutobuyerAmount"; // 購入数量設定名
   BuildingAutobuyer.buyAmount = 0; // 0: 最適な量, 1: 単一, 2: 10個, 3: 100個
@@ -32,46 +32,96 @@ var CMBuildingAutobuyer = {};
 
   // CookieClickerのゲーム設定に直接追加
   BuildingAutobuyer.injectIntoOptions = function () {
+    BuildingAutobuyer.log("injectIntoOptions called");
+
     // 既に追加済みかチェック
-    if (Game.customOptionsMenu && Game.customOptionsMenu.indexOf("CMBuildingAutobuyer") !== -1) return;
+    if (Game.customOptionsMenu && Game.customOptionsMenu.indexOf("CMBuildingAutobuyer.addOptionsMenu") !== -1) {
+      BuildingAutobuyer.log("Options menu already injected");
+      return;
+    }
 
     // 現在のオプションメニュー関数をバックアップ
     if (!Game.customOptionsMenu) {
+      BuildingAutobuyer.log("Initializing Game.customOptionsMenu");
       Game.customOptionsMenu = [];
       BuildingAutobuyer.originalUpdateMenu = Game.UpdateMenu;
 
       // Game.UpdateMenu関数をオーバーライド
       Game.UpdateMenu = function () {
+        BuildingAutobuyer.log("Custom UpdateMenu called");
         // 元のメニュー更新関数を実行
         BuildingAutobuyer.originalUpdateMenu();
 
         // 現在のメニューがオプションメニューであれば、カスタムオプションを追加
         if (Game.onMenu === "prefs") {
+          BuildingAutobuyer.log("On prefs menu, adding custom options");
           // すべてのカスタムオプションメニュー処理を実行
           Game.customOptionsMenu.forEach(function (customMenuCallback) {
+            BuildingAutobuyer.log(`Executing custom menu callback: ${customMenuCallback}`);
             if (typeof window[customMenuCallback] === "function") {
-              window[customMenuCallback]();
+              try {
+                window[customMenuCallback]();
+              } catch (e) {
+                console.error(`Error in custom menu callback ${customMenuCallback}:`, e);
+              }
+            } else {
+              BuildingAutobuyer.log(`Warning: ${customMenuCallback} is not a function in window context`);
             }
           });
+        } else {
+          BuildingAutobuyer.log(`Current menu is not prefs but: ${Game.onMenu}`);
         }
       };
     }
 
     // カスタムメニューに登録
     if (Game.customOptionsMenu.indexOf("CMBuildingAutobuyer.addOptionsMenu") === -1) {
+      BuildingAutobuyer.log("Registering CMBuildingAutobuyer.addOptionsMenu");
       Game.customOptionsMenu.push("CMBuildingAutobuyer.addOptionsMenu");
+    }
+
+    // 現在のメニュー状態をチェック
+    BuildingAutobuyer.log(`Current menu state: ${Game.onMenu}`);
+    if (Game.onMenu === "prefs") {
+      BuildingAutobuyer.log("Currently on prefs menu, calling addOptionsMenu directly");
+      BuildingAutobuyer.addOptionsMenu();
     }
   };
 
   // オプションメニューに設定項目を追加
   BuildingAutobuyer.addOptionsMenu = function () {
+    console.log("[BuildingAutobuyer] addOptionsMenu called");
+
     const optionsMenu = l("menu");
+    console.log("[BuildingAutobuyer] optionsMenu:", optionsMenu);
+
     const subMenu = l("preferenceTableBodies");
-    if (!subMenu) return; // メニューが見つからない場合は処理しない
+    console.log("[BuildingAutobuyer] subMenu (preferenceTableBodies):", subMenu);
+
+    if (!subMenu) {
+      console.error("[BuildingAutobuyer] preferenceTableBodies not found");
+
+      // メニュー要素を探す試み
+      console.log("メニュー要素を探索します:");
+      console.log("menu element:", document.getElementById("menu"));
+      const allDivs = Array.from(document.querySelectorAll("#menu div"));
+      console.log("menu children count:", allDivs.length);
+      console.log(
+        "menu structure:",
+        Array.from(document.querySelectorAll("#menu > *")).map((el) => el.id || el.className || el.tagName)
+      );
+
+      return; // メニューが見つからない場合は処理しない
+    }
+
+    console.log("[BuildingAutobuyer] Menu elements found");
 
     // 既に追加済みセクションがあれば削除
     const existingSection = l("CMBuildingAutobuyerOptions");
-    if (existingSection) existingSection.remove();
+    if (existingSection) {
+      console.log("[BuildingAutobuyer] Removing existing section");
+      existingSection.remove();
+    }
 
     // 新しいセクションを作成
     const newSection = document.createElement("div");
@@ -121,7 +171,9 @@ var CMBuildingAutobuyer = {};
     newSection.appendChild(optionsTable);
 
     // オプションメニューに追加
+    console.log("[BuildingAutobuyer] Appending new section to preferenceTableBodies");
     subMenu.appendChild(newSection);
+    console.log("[BuildingAutobuyer] Section added successfully");
   };
 
   // 設定行を作成するヘルパー関数
@@ -185,11 +237,18 @@ var CMBuildingAutobuyer = {};
 
   // 設定ヘッダーの作成
   BuildingAutobuyer.setupMenu = function () {
+    BuildingAutobuyer.log("setupMenu called");
     // CookieMonsterフレームワークがロードされているか確認
-    if (!Game.mods.cookieMonsterFramework) return;
+    if (!Game.mods.cookieMonsterFramework) {
+      BuildingAutobuyer.log("CookieMonsterFramework not found");
+      return;
+    }
+
+    BuildingAutobuyer.log("CookieMonsterFramework found");
 
     // 建物自動購入のセクションを作成
     if (!Game.mods.cookieMonsterFramework.saveData.cmBuildingAutobuyer) {
+      BuildingAutobuyer.log("Creating cmBuildingAutobuyer in saveData");
       Game.mods.cookieMonsterFramework.saveData.cmBuildingAutobuyer = {
         headers: { BuildingAutobuyer: 1 },
         settings: {
@@ -202,9 +261,13 @@ var CMBuildingAutobuyer = {};
     // メニューリスナーに登録
     if (Game.mods.cookieMonsterFramework.listeners.optionsMenu) {
       for (let i = 0; i < Game.mods.cookieMonsterFramework.listeners.optionsMenu.length; i++) {
-        if (Game.mods.cookieMonsterFramework.listeners.optionsMenu[i].sectionId === "cmBuildingAutobuyer") return;
+        if (Game.mods.cookieMonsterFramework.listeners.optionsMenu[i].sectionId === "cmBuildingAutobuyer") {
+          BuildingAutobuyer.log("Already registered with CookieMonsterFramework");
+          return;
+        }
       }
 
+      BuildingAutobuyer.log("Registering with CookieMonsterFramework");
       Game.mods.cookieMonsterFramework.listeners.optionsMenu.push({
         sectionId: "cmBuildingAutobuyer",
         header: "ビルディング自動購入",
@@ -492,34 +555,167 @@ var CMBuildingAutobuyer = {};
 
   // 初期化処理
   BuildingAutobuyer.init = function () {
-    // 設定をCookieClickerメニューに追加
-    if (Game && Game.ready) {
-      BuildingAutobuyer.setupMenu();
-      BuildingAutobuyer.injectIntoOptions();
-    } else {
-      const checkGameLoaded = setInterval(function () {
-        if (Game && Game.ready) {
-          clearInterval(checkGameLoaded);
-          BuildingAutobuyer.setupMenu();
-          BuildingAutobuyer.injectIntoOptions();
-        }
-      }, 1000);
+    // デバッグ情報を表示
+    console.log("BuildingAutobuyer.init called");
+
+    // CookieClickerが存在するか確認
+    if (typeof Game === "undefined") {
+      console.error("Game is not defined, CookieClicker might not be loaded");
+      return;
     }
 
-    // CookieMonsterフレームワークが後でロードされる場合に備えて監視
-    const checkCMFramework = setInterval(function () {
-      if (Game?.mods?.cookieMonsterFramework) {
-        clearInterval(checkCMFramework);
-        BuildingAutobuyer.setupMenu();
+    // l関数が存在するか確認
+    if (typeof l !== "function") {
+      console.error("l function is not defined, CookieClicker DOM utilities might not be loaded");
+      console.log("Attempting to define l function");
+      window.l = function (id) {
+        return document.getElementById(id);
+      };
+    } else {
+      console.log("l function exists");
+    }
 
-        // 設定から初期状態を読み込む
-        if (Game.mods.cookieMonsterFramework.saveData?.cmBuildingAutobuyer?.settings) {
-          const settings = Game.mods.cookieMonsterFramework.saveData.cmBuildingAutobuyer.settings;
-          if (settings.AutoBuyerEnabled === 1 && !BuildingAutobuyer.isRunning) {
-            BuildingAutobuyer.start();
-          }
-          if (settings.BuyAmount !== undefined) {
-            BuildingAutobuyer.buyAmount = settings.BuyAmount;
+    // Game.customOptionsMenuを初期化
+    if (!Game.customOptionsMenu) {
+      console.log("Initializing Game.customOptionsMenu");
+      Game.customOptionsMenu = [];
+      BuildingAutobuyer.originalUpdateMenu = Game.UpdateMenu;
+
+      // Game.UpdateMenu関数をオーバーライド
+      Game.UpdateMenu = function () {
+        console.log("[BuildingAutobuyer] Custom UpdateMenu called");
+
+        // 元のメニュー更新関数を実行
+        BuildingAutobuyer.originalUpdateMenu();
+
+        console.log("[BuildingAutobuyer] Current menu:", Game.onMenu);
+        console.log("[BuildingAutobuyer] customOptionsMenu:", Game.customOptionsMenu);
+
+        // 現在のメニューがオプションメニューであれば、カスタムオプションを追加
+        if (Game.onMenu === "prefs") {
+          console.log("[BuildingAutobuyer] On prefs menu, adding custom options");
+          // すべてのカスタムオプションメニュー処理を実行
+          Game.customOptionsMenu.forEach(function (customMenuCallback) {
+            console.log(`[BuildingAutobuyer] Executing custom menu callback: ${customMenuCallback}`);
+
+            // 文字列からオブジェクトと関数を取得
+            const parts = customMenuCallback.split(".");
+            let obj = window;
+            let funcName = customMenuCallback;
+
+            if (parts.length > 1) {
+              obj = window[parts[0]];
+              funcName = parts[1];
+            }
+
+            console.log(`[BuildingAutobuyer] Resolving callback: object=${parts[0]}, function=${funcName}`, obj);
+
+            if (obj && typeof obj[funcName] === "function") {
+              try {
+                obj[funcName]();
+              } catch (e) {
+                console.error(`Error in custom menu callback ${customMenuCallback}:`, e);
+              }
+            } else {
+              console.warn(`[BuildingAutobuyer] Warning: ${customMenuCallback} is not a properly resolved function`);
+              console.log(
+                "Available window functions:",
+                Object.keys(window)
+                  .filter((key) => typeof window[key] === "function")
+                  .slice(0, 20)
+              );
+
+              if (parts[0] === "BuildingAutobuyer") {
+                console.log("BuildingAutobuyer properties:", Object.keys(BuildingAutobuyer));
+                console.log("addOptionsMenu exists on BuildingAutobuyer:", typeof BuildingAutobuyer.addOptionsMenu === "function");
+              }
+            }
+          });
+        } else {
+          console.log(`[BuildingAutobuyer] Current menu is not prefs but: ${Game.onMenu}`);
+        }
+      };
+    } else {
+      console.log("[BuildingAutobuyer] Game.customOptionsMenu already exists:", Game.customOptionsMenu);
+    }
+
+    // カスタムメニューに登録
+    const callbackName = "BuildingAutobuyer.addOptionsMenu";
+    if (Game.customOptionsMenu.indexOf(callbackName) === -1) {
+      console.log(`[BuildingAutobuyer] Registering ${callbackName}`);
+      Game.customOptionsMenu.push(callbackName);
+    } else {
+      console.log(`[BuildingAutobuyer] ${callbackName} already registered`);
+    }
+
+    // メニュー更新の手動トリガー
+    console.log(`[BuildingAutobuyer] Current menu state: ${Game.onMenu}`);
+    if (Game.onMenu === "prefs") {
+      console.log("[BuildingAutobuyer] Currently on prefs menu, calling addOptionsMenu directly");
+      BuildingAutobuyer.addOptionsMenu();
+    } else {
+      console.log("[BuildingAutobuyer] Not on prefs menu, opening Options menu to trigger update");
+      try {
+        // ゲームのOption APIが利用可能ならそれを使う
+        if (typeof Game.ShowMenu === "function") {
+          Game.ShowMenu("prefs");
+          console.log("[BuildingAutobuyer] Opened prefs menu via Game.ShowMenu");
+        }
+      } catch (e) {
+        console.error("[BuildingAutobuyer] Error opening menu:", e);
+      }
+    }
+
+    // グローバルWindowオブジェクトに関数を追加
+    if (typeof window.BuildingAutobuyer === "undefined") {
+      console.log("[BuildingAutobuyer] Adding BuildingAutobuyer to window object");
+      window.BuildingAutobuyer = BuildingAutobuyer;
+    }
+
+    // メニュー要素を定期的にチェック
+    setTimeout(function () {
+      console.log("[BuildingAutobuyer] Delayed check for menu elements");
+      console.log("menu element:", document.getElementById("menu"));
+      console.log("preferenceTableBodies:", document.getElementById("preferenceTableBodies"));
+
+      if (document.getElementById("menu") && !document.getElementById("preferenceTableBodies")) {
+        console.log("[BuildingAutobuyer] Menu exists but preferenceTableBodies not found, investigating structure");
+        const menuElement = document.getElementById("menu");
+        console.log(
+          "Menu children:",
+          Array.from(menuElement.children).map((el) => el.id || el.className || el.tagName)
+        );
+
+        // セクションの構造を確認
+        const sections = menuElement.querySelectorAll(".section");
+        console.log("Section count:", sections.length);
+        sections.forEach((section, i) => {
+          console.log(`Section ${i}:`, section.id || section.className);
+          console.log(
+            `Section ${i} children:`,
+            Array.from(section.children).map((el) => el.id || el.className || el.tagName)
+          );
+        });
+
+        // 既存の設定要素の構造を調査
+        const subsections = menuElement.querySelectorAll(".subsection");
+        console.log("Subsection count:", subsections.length);
+        if (subsections.length > 0) {
+          console.log("First subsection:", subsections[0].id || subsections[0].className);
+          console.log(
+            "First subsection children:",
+            Array.from(subsections[0].children).map((el) => el.id || el.className || el.tagName)
+          );
+
+          // 実際の設定が追加されている場所を特定
+          if (subsections[0].querySelector(".listing")) {
+            console.log("Found .listing element, this might be where settings should go");
+            const listingParent = subsections[0].querySelector(".listing").parentNode;
+            console.log("Listing parent:", listingParent.id || listingParent.className || listingParent.tagName);
+
+            // セクションが追加されるべき場所を検出
+            BuildingAutobuyer.targetMenuElement = listingParent;
+            console.log("Set targetMenuElement for future use");
           }
         }
       }
@@ -534,6 +730,27 @@ var CMBuildingAutobuyer = {};
   console.log("オプションメニューから設定できます");
   Game.Notify("CM-BuildingAutobuyer", "建物自動購入スクリプトが読み込まれました", [4, 6], 5);
 
+  // 手動メニュー更新関数（デバッグ用）
+  BuildingAutobuyer.forceUpdateMenu = function () {
+    BuildingAutobuyer.log("Manual menu update requested");
+    if (Game && Game.UpdateMenu) {
+      BuildingAutobuyer.log(`Current menu: ${Game.onMenu}`);
+      // 設定画面に移動してから更新
+      if (Game.onMenu !== "prefs") {
+        BuildingAutobuyer.log("Switching to prefs menu");
+        Game.ShowMenu("prefs");
+      }
+      BuildingAutobuyer.log("Calling UpdateMenu");
+      Game.UpdateMenu();
+
+      // 直接addOptionsMenuを呼び出してみる
+      BuildingAutobuyer.log("Directly calling addOptionsMenu");
+      BuildingAutobuyer.addOptionsMenu();
+    } else {
+      BuildingAutobuyer.log("Game.UpdateMenu not available");
+    }
+  };
+
   // 初期化を実行
   setTimeout(BuildingAutobuyer.init, 1000);
 
@@ -541,6 +758,7 @@ var CMBuildingAutobuyer = {};
   if (typeof Game !== "undefined") {
     Game.registerMod("CMBuildingAutobuyer", {
       init: function () {
+        BuildingAutobuyer.log("Mod init called via Game.registerMod");
         BuildingAutobuyer.init();
         return true;
       },
