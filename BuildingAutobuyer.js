@@ -70,42 +70,160 @@ var CMBuildingAutobuyer = {};
 
   // 設定メニューにオプションを追加
   BuildingAutobuyer.addOptionsMenu = function () {
-    if (!Game.customOptionsMenu) {
-      Game.customOptionsMenu = [];
+    // 元のGame.Drawメソッドをバックアップ
+    if (!Game.Backup_DrawMenu) {
+      Game.Backup_DrawMenu = Game.DrawMenu;
     }
 
-    // すでに登録済みなら何もしない
-    for (let i = 0; i < Game.customOptionsMenu.length; i++) {
-      if (Game.customOptionsMenu[i].name === "CMAutobuyer") return;
-    }
+    // メニュー描画関数をオーバーライド
+    Game.DrawMenu = function () {
+      // 元の描画関数を呼び出す
+      Game.Backup_DrawMenu();
 
-    // オプションメニューに追加
-    Game.customOptionsMenu.push({
-      name: "CMAutobuyer",
-      title: "Cookie Monster Autobuyer",
-      options: [
-        {
-          name: "BuildingAutobuyer",
-          label: ["建物自動購入オフ", "建物自動購入オン"],
-          desc: "PP最短の建物を自動的に購入します",
-          callback: function (value) {
-            if (value) {
-              BuildingAutobuyer.start();
-            } else {
-              BuildingAutobuyer.stop();
-            }
-          },
-        },
-        {
-          name: "BuildingAutobuyerAmount",
-          label: ["最適な量", "単一購入", "10個購入", "100個購入"],
-          desc: "自動購入する建物の数量を設定します",
-          callback: function (value) {
-            BuildingAutobuyer.setBuyAmount(value);
-          },
-        },
-      ],
-    });
+      // 設定画面のときのみ
+      if (Game.onMenu === "prefs") {
+        const menu = l("menu");
+        let prefsSection = menu.querySelector(".section");
+
+        // もし元の設定セクションが見つからなければ、何もしない
+        if (!prefsSection) return;
+
+        // 既存のセクションを探す
+        let cmSection = menu.querySelector(".section-cmAutobuyer");
+
+        // まだCM Autobuyerセクションがなければ作成
+        if (!cmSection) {
+          cmSection = document.createElement("div");
+          cmSection.className = "section section-cmAutobuyer";
+
+          // タイトルを追加
+          const title = document.createElement("div");
+          title.className = "title";
+          title.textContent = "Cookie Monster Autobuyer";
+          cmSection.appendChild(title);
+
+          // 設定項目を追加
+          // 建物自動購入設定
+          const listing1 = document.createElement("div");
+          listing1.className = "listing";
+
+          const buildingAutoLabel = document.createElement("a");
+          buildingAutoLabel.className = "option" + (Game.prefs.BuildingAutobuyer ? "" : " off");
+          buildingAutoLabel.textContent = Game.prefs.BuildingAutobuyer ? "オン" : "オフ";
+          buildingAutoLabel.onclick = function () {
+            Game.Toggle("BuildingAutobuyer", "buildingAutoLabel", ["オフ", "オン"], function () {
+              if (Game.prefs.BuildingAutobuyer) {
+                BuildingAutobuyer.start();
+              } else {
+                BuildingAutobuyer.stop();
+              }
+            });
+          };
+
+          listing1.appendChild(buildingAutoLabel);
+          listing1.appendChild(document.createTextNode(" 建物自動購入：PP最短の建物を自動的に購入"));
+          cmSection.appendChild(listing1);
+
+          // 購入数量設定
+          const listing2 = document.createElement("div");
+          listing2.className = "listing";
+
+          const amountLabels = ["最適な量", "単一購入", "10個購入", "100個購入"];
+
+          const amountLabel = document.createElement("a");
+          amountLabel.className = "option";
+          amountLabel.textContent = amountLabels[Game.prefs.BuildingAutobuyerAmount || 0];
+          amountLabel.onclick = function () {
+            let amount = Game.prefs.BuildingAutobuyerAmount || 0;
+            amount = (amount + 1) % 4;
+            Game.prefs.BuildingAutobuyerAmount = amount;
+            amountLabel.textContent = amountLabels[amount];
+            BuildingAutobuyer.setBuyAmount(amount);
+          };
+
+          listing2.appendChild(amountLabel);
+          listing2.appendChild(document.createTextNode(" 購入数量設定：自動購入する建物の数量"));
+          cmSection.appendChild(listing2);
+
+          // アップグレード自動購入設定
+          if (window.CMUpgradeAutobuyer) {
+            const listing3 = document.createElement("div");
+            listing3.className = "listing";
+
+            const upgradeAutoLabel = document.createElement("a");
+            upgradeAutoLabel.className = "option" + (Game.prefs.UpgradeAutobuyer ? "" : " off");
+            upgradeAutoLabel.textContent = Game.prefs.UpgradeAutobuyer ? "オン" : "オフ";
+            upgradeAutoLabel.onclick = function () {
+              Game.Toggle("UpgradeAutobuyer", "upgradeAutoLabel", ["オフ", "オン"], function () {
+                if (Game.prefs.UpgradeAutobuyer) {
+                  CMUpgradeAutobuyer.start();
+                } else {
+                  CMUpgradeAutobuyer.stop();
+                }
+              });
+            };
+
+            listing3.appendChild(upgradeAutoLabel);
+            listing3.appendChild(document.createTextNode(" アップグレード自動購入：PP最短のアップグレードを自動的に購入"));
+            cmSection.appendChild(listing3);
+
+            // スイッチ系除外設定
+            const listing4 = document.createElement("div");
+            listing4.className = "listing";
+
+            const switchesLabel = document.createElement("a");
+            switchesLabel.className = "option" + (Game.prefs.UpgradeExcludeSwitches ? "" : " off");
+            switchesLabel.textContent = Game.prefs.UpgradeExcludeSwitches ? "オン" : "オフ";
+            switchesLabel.onclick = function () {
+              Game.Toggle("UpgradeExcludeSwitches", "switchesLabel", ["オフ", "オン"], function () {
+                CMUpgradeAutobuyer.excludeSwitches = Game.prefs.UpgradeExcludeSwitches;
+              });
+            };
+
+            listing4.appendChild(switchesLabel);
+            listing4.appendChild(document.createTextNode(" スイッチ系除外：Golden Switch/Shimmering Veil などを除外"));
+            cmSection.appendChild(listing4);
+
+            // 研究除外設定
+            const listing5 = document.createElement("div");
+            listing5.className = "listing";
+
+            const researchLabel = document.createElement("a");
+            researchLabel.className = "option" + (Game.prefs.UpgradeExcludeResearch ? "" : " off");
+            researchLabel.textContent = Game.prefs.UpgradeExcludeResearch ? "オン" : "オフ";
+            researchLabel.onclick = function () {
+              Game.Toggle("UpgradeExcludeResearch", "researchLabel", ["オフ", "オン"], function () {
+                CMUpgradeAutobuyer.excludeResearch = Game.prefs.UpgradeExcludeResearch;
+              });
+            };
+
+            listing5.appendChild(researchLabel);
+            listing5.appendChild(document.createTextNode(" 研究除外：負の効果を持つ可能性のある研究アップグレードを除外"));
+            cmSection.appendChild(listing5);
+
+            // 契約系除外設定
+            const listing6 = document.createElement("div");
+            listing6.className = "listing";
+
+            const covenantsLabel = document.createElement("a");
+            covenantsLabel.className = "option" + (Game.prefs.UpgradeExcludeCovenants ? "" : " off");
+            covenantsLabel.textContent = Game.prefs.UpgradeExcludeCovenants ? "オン" : "オフ";
+            covenantsLabel.onclick = function () {
+              Game.Toggle("UpgradeExcludeCovenants", "covenantsLabel", ["オフ", "オン"], function () {
+                CMUpgradeAutobuyer.excludeCovenants = Game.prefs.UpgradeExcludeCovenants;
+              });
+            };
+
+            listing6.appendChild(covenantsLabel);
+            listing6.appendChild(document.createTextNode(" 契約系除外：Elder Covenantなどの契約系アップグレードを除外"));
+            cmSection.appendChild(listing6);
+          }
+
+          // メニューに追加
+          prefsSection.parentNode.insertBefore(cmSection, prefsSection.nextSibling);
+        }
+      }
+    };
   };
 
   // 購入数量を設定するメソッド
@@ -327,6 +445,11 @@ var CMBuildingAutobuyer = {};
     Game.Notify("建物自動購入", "PP最短の建物を自動的に購入します", [16, 5], 1);
     BuildingAutobuyer.log("建物自動購入を開始しました。");
     setTimeout(BuildingAutobuyer.check, BuildingAutobuyer.interval);
+
+    // 現在オプション画面を表示中なら更新
+    if (Game.onMenu === "prefs") {
+      Game.UpdateMenu();
+    }
   };
 
   // 自動購入を停止
@@ -346,6 +469,11 @@ var CMBuildingAutobuyer = {};
     BuildingAutobuyer.targetBuilding = null;
     Game.Notify("建物自動購入", "自動購入を停止しました", [17, 5], 1);
     BuildingAutobuyer.log("建物自動購入を停止しました。");
+
+    // 現在オプション画面を表示中なら更新
+    if (Game.onMenu === "prefs") {
+      Game.UpdateMenu();
+    }
   };
 
   // 自動購入の状態を切り替え
@@ -370,6 +498,9 @@ var CMBuildingAutobuyer = {};
     if (typeof Game.prefs.BuildingAutobuyerAmount === "number") {
       BuildingAutobuyer.setBuyAmount(Game.prefs.BuildingAutobuyerAmount);
     }
+
+    // メニューを更新
+    Game.UpdateMenu();
   };
 
   // 初期化時のメッセージ
