@@ -17,10 +17,38 @@ var CMBuildingAutobuyer = {};
   BuildingAutobuyer.settingName = "cmBuildingAutobuyer"; // 設定名
   BuildingAutobuyer.amountSettingName = "cmBuildingAutobuyerAmount"; // 購入数量設定名
   BuildingAutobuyer.buyAmount = 0; // 0: 最適な量, 1: 単一, 2: 10個, 3: 100個
-  BuildingAutobuyer.settings = {
-    enabled: false, // 自動購入が有効か
-    buyAmount: 0, // 購入数量 (0:最適, 1:単一, 2:10個, 3:100個)
+
+  // 設定データ
+  BuildingAutobuyer.config = {
+    // 設定のヘッダー名
+    header: "CMAutobuyer",
+    // 設定項目
+    settings: {
+      BuildingAutobuyer: {
+        label: ["オフ", "オン"],
+        desc: "建物自動購入：PP最短の建物を自動的に購入",
+        type: "bool",
+        toggle: true,
+        func: function () {
+          if (Game.prefs.BuildingAutobuyer) {
+            BuildingAutobuyer.start();
+          } else {
+            BuildingAutobuyer.stop();
+          }
+        },
+      },
+      BuildingAutobuyerAmount: {
+        label: ["最適な量", "単一購入", "10個購入", "100個購入"],
+        desc: "購入数量設定：自動購入する建物の数量",
+        type: "bool",
+        toggle: false,
+        func: function () {
+          BuildingAutobuyer.setBuyAmount(Game.prefs.BuildingAutobuyerAmount || 0);
+        },
+      },
+    },
   };
+
   BuildingAutobuyer.targetBuilding = null; // 購入待ちの建物を保存
 
   // デバッグログ
@@ -30,165 +58,54 @@ var CMBuildingAutobuyer = {};
     }
   };
 
-  // 設定UIを作成して表示
-  BuildingAutobuyer.showSettingsUI = function () {
-    // 既存の設定メニューがあれば削除
-    const oldMenu = document.getElementById("CMBASettingsMenu");
-    if (oldMenu) oldMenu.remove();
+  // Game.prefsにデフォルト設定を追加
+  BuildingAutobuyer.setupPrefs = function () {
+    // すでに設定があれば何もしない
+    if (Game.prefs.BuildingAutobuyer !== undefined) return;
 
-    // 設定メニューを作成
-    const menu = document.createElement("div");
-    menu.id = "CMBASettingsMenu";
-    menu.style.position = "fixed";
-    menu.style.left = "50%";
-    menu.style.top = "50%";
-    menu.style.transform = "translate(-50%, -50%)";
-    menu.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
-    menu.style.color = "white";
-    menu.style.padding = "20px";
-    menu.style.borderRadius = "15px";
-    menu.style.zIndex = "10000000000";
-    menu.style.minWidth = "300px";
-    menu.style.textAlign = "center";
-    menu.style.boxShadow = "0 0 15px rgba(255, 255, 255, 0.3)";
-    menu.style.border = "1px solid rgba(255, 255, 255, 0.2)";
-
-    // タイトル
-    const title = document.createElement("h2");
-    title.textContent = "建物自動購入設定";
-    title.style.borderBottom = "1px solid rgba(255, 255, 255, 0.3)";
-    title.style.paddingBottom = "10px";
-    title.style.marginBottom = "15px";
-    menu.appendChild(title);
-
-    // 有効/無効設定
-    const enableDiv = document.createElement("div");
-    enableDiv.style.marginBottom = "15px";
-    enableDiv.style.textAlign = "left";
-
-    const enableLabel = document.createElement("span");
-    enableLabel.textContent = "自動購入: ";
-    enableLabel.style.marginRight = "10px";
-    enableDiv.appendChild(enableLabel);
-
-    const enableButton = document.createElement("a");
-    enableButton.className = "option" + (BuildingAutobuyer.isRunning ? "" : " off");
-    enableButton.textContent = BuildingAutobuyer.isRunning ? "オン" : "オフ";
-    enableButton.style.cursor = "pointer";
-    enableButton.onclick = function () {
-      if (BuildingAutobuyer.isRunning) {
-        BuildingAutobuyer.stop();
-        enableButton.textContent = "オフ";
-        enableButton.className = "option off";
-      } else {
-        BuildingAutobuyer.start();
-        enableButton.textContent = "オン";
-        enableButton.className = "option";
-      }
-    };
-    enableDiv.appendChild(enableButton);
-    menu.appendChild(enableDiv);
-
-    // 購入数量設定
-    const amountDiv = document.createElement("div");
-    amountDiv.style.marginBottom = "15px";
-    amountDiv.style.textAlign = "left";
-
-    const amountLabel = document.createElement("span");
-    amountLabel.textContent = "購入数量: ";
-    amountLabel.style.marginRight = "10px";
-    amountDiv.appendChild(amountLabel);
-
-    const amountTexts = ["最適な量", "1個ずつ", "10個ずつ", "100個ずつ"];
-
-    const amountButton = document.createElement("a");
-    amountButton.className = "option";
-    amountButton.textContent = amountTexts[BuildingAutobuyer.buyAmount];
-    amountButton.style.cursor = "pointer";
-    amountButton.onclick = function () {
-      BuildingAutobuyer.buyAmount = (BuildingAutobuyer.buyAmount + 1) % 4;
-      amountButton.textContent = amountTexts[BuildingAutobuyer.buyAmount];
-
-      Game.Notify("建物自動購入", `購入数量を「${amountTexts[BuildingAutobuyer.buyAmount]}」に設定しました`, [16, 5], 3);
-    };
-    amountDiv.appendChild(amountButton);
-    menu.appendChild(amountDiv);
-
-    // 閉じるボタン
-    const closeButton = document.createElement("a");
-    closeButton.className = "option";
-    closeButton.textContent = "閉じる";
-    closeButton.style.marginTop = "15px";
-    closeButton.style.display = "inline-block";
-    closeButton.style.cursor = "pointer";
-    closeButton.onclick = function () {
-      menu.remove();
-    };
-    menu.appendChild(closeButton);
-
-    // メニューを表示
-    document.body.appendChild(menu);
+    // デフォルト設定を追加
+    Game.prefs.BuildingAutobuyer = 0;
+    Game.prefs.BuildingAutobuyerAmount = 0;
   };
 
-  // 設定ボタンをゲームに追加
-  BuildingAutobuyer.addSettingsButton = function () {
-    if (document.getElementById("CMBASettingsButton")) return;
+  // 設定メニューにオプションを追加
+  BuildingAutobuyer.addOptionsMenu = function () {
+    if (!Game.customOptionsMenu) {
+      Game.customOptionsMenu = [];
+    }
 
-    const button = document.createElement("div");
-    button.id = "CMBASettingsButton";
-    button.className = "prefButton";
-    button.style.position = "fixed";
-    button.style.bottom = "50px";
-    button.style.right = "20px";
-    button.style.background = "url(img/storeTile.jpg)";
-    button.style.backgroundPosition = "0px 5px";
-    button.style.width = "48px";
-    button.style.height = "48px";
-    button.style.borderRadius = "24px";
-    button.style.overflow = "hidden";
-    button.style.cursor = "pointer";
-    button.style.textAlign = "center";
-    button.style.zIndex = "100000";
-    button.style.transition = "transform 0.15s";
-    button.onmouseover = function () {
-      button.style.transform = "scale(1.1)";
-    };
-    button.onmouseout = function () {
-      button.style.transform = "scale(1)";
-    };
+    // すでに登録済みなら何もしない
+    for (let i = 0; i < Game.customOptionsMenu.length; i++) {
+      if (Game.customOptionsMenu[i].name === "CMAutobuyer") return;
+    }
 
-    const icon = document.createElement("div");
-    icon.style.backgroundImage = "url(img/buildings.png)";
-    icon.style.backgroundPosition = "-336px -384px";
-    icon.style.width = "48px";
-    icon.style.height = "48px";
-    icon.style.transform = "scale(0.8)";
-    icon.style.position = "absolute";
-    icon.style.left = "0";
-    icon.style.top = "0";
-    button.appendChild(icon);
-
-    const tooltip = document.createElement("div");
-    tooltip.className = "tooltip";
-    tooltip.style.width = "200px";
-    tooltip.style.left = "-75px";
-    tooltip.textContent = "建物自動購入設定";
-    tooltip.style.visibility = "hidden";
-    tooltip.style.opacity = "0";
-    button.onmouseover = function () {
-      button.style.transform = "scale(1.1)";
-      tooltip.style.visibility = "visible";
-      tooltip.style.opacity = "1";
-    };
-    button.onmouseout = function () {
-      button.style.transform = "scale(1)";
-      tooltip.style.visibility = "hidden";
-      tooltip.style.opacity = "0";
-    };
-    button.appendChild(tooltip);
-
-    button.onclick = BuildingAutobuyer.showSettingsUI;
-    document.body.appendChild(button);
+    // オプションメニューに追加
+    Game.customOptionsMenu.push({
+      name: "CMAutobuyer",
+      title: "Cookie Monster Autobuyer",
+      options: [
+        {
+          name: "BuildingAutobuyer",
+          label: ["建物自動購入オフ", "建物自動購入オン"],
+          desc: "PP最短の建物を自動的に購入します",
+          callback: function (value) {
+            if (value) {
+              BuildingAutobuyer.start();
+            } else {
+              BuildingAutobuyer.stop();
+            }
+          },
+        },
+        {
+          name: "BuildingAutobuyerAmount",
+          label: ["最適な量", "単一購入", "10個購入", "100個購入"],
+          desc: "自動購入する建物の数量を設定します",
+          callback: function (value) {
+            BuildingAutobuyer.setBuyAmount(value);
+          },
+        },
+      ],
+    });
   };
 
   // 購入数量を設定するメソッド
@@ -201,6 +118,8 @@ var CMBuildingAutobuyer = {};
 
     // 購入数量を設定
     BuildingAutobuyer.buyAmount = amount;
+    // Game.prefsにも設定
+    Game.prefs.BuildingAutobuyerAmount = amount;
     // 新しい購入モードでは、以前のターゲット建物をクリア
     BuildingAutobuyer.targetBuilding = null;
 
@@ -401,6 +320,9 @@ var CMBuildingAutobuyer = {};
       return;
     }
     BuildingAutobuyer.isRunning = true;
+    // Game.prefsにも設定
+    Game.prefs.BuildingAutobuyer = 1;
+    // タイマー開始
     BuildingAutobuyer.timerId = setInterval(BuildingAutobuyer.check, BuildingAutobuyer.interval);
     Game.Notify("建物自動購入", "PP最短の建物を自動的に購入します", [16, 5], 1);
     BuildingAutobuyer.log("建物自動購入を開始しました。");
@@ -414,6 +336,8 @@ var CMBuildingAutobuyer = {};
       return;
     }
     BuildingAutobuyer.isRunning = false;
+    // Game.prefsにも設定
+    Game.prefs.BuildingAutobuyer = 0;
     if (BuildingAutobuyer.timerId) {
       clearInterval(BuildingAutobuyer.timerId);
       BuildingAutobuyer.timerId = null;
@@ -431,16 +355,20 @@ var CMBuildingAutobuyer = {};
 
   // 初期化処理
   BuildingAutobuyer.init = function () {
-    // 設定ボタンをゲームに追加
-    if (Game && Game.ready) {
-      BuildingAutobuyer.addSettingsButton();
-    } else {
-      const checkGameLoaded = setInterval(function () {
-        if (Game && Game.ready) {
-          clearInterval(checkGameLoaded);
-          BuildingAutobuyer.addSettingsButton();
-        }
-      }, 1000);
+    // Game.prefsに設定を追加
+    BuildingAutobuyer.setupPrefs();
+
+    // オプションメニューに設定を追加
+    BuildingAutobuyer.addOptionsMenu();
+
+    // 既存の設定から状態復元
+    if (Game.prefs.BuildingAutobuyer) {
+      BuildingAutobuyer.start();
+    }
+
+    // 購入数量を設定
+    if (typeof Game.prefs.BuildingAutobuyerAmount === "number") {
+      BuildingAutobuyer.setBuyAmount(Game.prefs.BuildingAutobuyerAmount);
     }
   };
 
@@ -449,11 +377,20 @@ var CMBuildingAutobuyer = {};
   console.log("使用方法: CMBuildingAutobuyer.start() で開始、CMBuildingAutobuyer.stop() で停止");
   console.log("購入数量設定: CMBuildingAutobuyer.setBuyAmount(数量) で変更（0:最適な量, 1:単一, 2:10個, 3:100個）");
   console.log("購入数量確認: CMBuildingAutobuyer.getBuyAmount() で現在の設定を確認できます");
-  console.log("画面右下の設定ボタンからも設定できます");
+  console.log("設定はCookie Clickerのオプション画面からも変更できます");
   Game.Notify("CM-BuildingAutobuyer", "建物自動購入スクリプトが読み込まれました", [4, 6], 5);
 
-  // 初期化を実行
-  setTimeout(BuildingAutobuyer.init, 1000);
+  // 初期化を実行（Game.ready後に行う）
+  if (Game && Game.ready) {
+    BuildingAutobuyer.init();
+  } else {
+    const checkGameLoaded = setInterval(function () {
+      if (Game && Game.ready) {
+        clearInterval(checkGameLoaded);
+        BuildingAutobuyer.init();
+      }
+    }, 1000);
+  }
 
   // モッドAPIのフック追加
   if (typeof Game !== "undefined") {
