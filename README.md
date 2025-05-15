@@ -1,12 +1,12 @@
 # Cookie Monster Autobuyer 🍪 🏬
 
-Cookie Clicker 用の Cookie Monster 拡張機能向け自動購入スクリプトです。建物とアップグレードを最適な効率で自動的に購入します。
+Cookie Clicker 用の Cookie Monster Mod 向け自動購入 Mod です。施設とアップグレードを最適な効率で自動的に購入します。
 
 ## 機能
 
-### 建物自動購入 (BuildingAutobuyer.js)
+### 施設自動購入 (BuildingAutobuyer.js)
 
-- Payback Period（投資回収期間）が最短の建物を自動的に購入
+- Payback Period（投資回収期間）が最短の施設を自動的に購入
 - 購入数量を選択可能（最適な量、1 個ずつ、10 個ずつ、100 個ずつ）
 - Cookie Monster 設定画面からワンクリックで有効化/無効化
 
@@ -24,7 +24,7 @@ Cookie Clicker 用の Cookie Monster 拡張機能向け自動購入スクリプ�
 - [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/)
 - [Cookie Monster](https://github.com/CookieMonsterTeam/CookieMonster)
 
-<!-- ## インストール方法
+## インストール方法
 
 ### 方法
 
@@ -33,7 +33,7 @@ Cookie Clicker 用の Cookie Monster 拡張機能向け自動購入スクリプ�
 3. 「コンソール」タブを開く
 4. 各スクリプトの内容をコピーしてコンソールに貼り付け、Enter キーを押す
 
-#### 建物自動購入
+#### 施設自動購入
 
 ```javascript
 Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
@@ -45,15 +45,12 @@ Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
 Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/UpgradeAutobuyer.js");
 ```
 
-### 方法 2: スクリプトタグによる読み込み
+#### 両方
 
 ```javascript
-function(){
-  var s = document.createElement('script');
-  s.setAttribute("src", "https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
-  document.head.appendChild(s);
-}();
-``` -->
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/BuildingAutobuyer.js");
+Game.LoadMod("https://dg4-design.github.io/CMAutobuyer/UpgradeAutobuyer.js");
+```
 
 ## 使い方
 
@@ -61,8 +58,8 @@ function(){
 
 Cookie Monster のオプション画面（画面左上の CM アイコン → オプション）から以下の設定が可能です：
 
-- **BuildingAutobuyer**: 建物自動購入のオン/オフ
-- **購入数量**: 自動購入する建物の数量（最適な量/1 個ずつ/10 個ずつ/100 個ずつ）
+- **BuildingAutobuyer**: 施設自動購入のオン/オフ
+- **購入数量**: 自動購入する施設の数量（最適な量/1 個ずつ/10 個ずつ/100 個ずつ）
 - **UpgradeAutobuyer**: アップグレード自動購入のオン/オフ
 - **スイッチ除外**: スイッチ系アップグレード除外のオン/オフ
 - **研究除外**: 研究アップグレード除外のオン/オフ
@@ -70,7 +67,7 @@ Cookie Monster のオプション画面（画面左上の CM アイコン → �
 
 ### コマンド
 
-#### 建物自動購入
+#### 施設自動購入
 
 - 開始: `CMBuildingAutobuyer.start()`
 - 停止: `CMBuildingAutobuyer.stop()`
@@ -91,4 +88,4 @@ Cookie Monster のオプション画面（画面左上の CM アイコン → �
 
 Cookie Monster が計算する Payback Period（PP）という指標を使用しています。PP は投資（購入コスト）がクッキー生産量の増加によって回収されるまでの時間を表します。PP 値が小さいほど効率的な購入となります。
 
-このスクリプトは定期的に最も PP 値の小さい建物やアップグレードを探して自動購入します。
+このスクリプトは定期的に最も PP 値の小さい施設やアップグレードを探して自動購入します。
